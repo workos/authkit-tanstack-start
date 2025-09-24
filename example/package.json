@@ -6,9 +6,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "node --env-file=.env ./node_modules/.bin/vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "start": "node --env-file=.env ./node_modules/.bin/vite start"
   },
   "keywords": [],
   "author": "",

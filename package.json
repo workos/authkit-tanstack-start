@@ -1,13 +1,28 @@
 {
   "name": "@workos/authkit-tanstack-start",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "WorkOS AuthKit SDK for TanStack Start",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +40,7 @@
     "prettier": "^3.6.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.7.2"
   },
   "pnpm": {

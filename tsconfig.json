@@ -5,6 +5,18 @@
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
-    "strictNullChecks": true
-  }
+    "strictNullChecks": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "example"]
 }

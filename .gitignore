@@ -14,3 +14,4 @@ yarn.lock
 /public/build
 
 .vinxi/
+dist/

@@ -1,17 +1,13 @@
-import { createRouter as createTanStackRouter } from '@tanstack/react-router';
+import { createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 
-export function createRouter() {
-  const router = createTanStackRouter({
+console.log('ROUTER', process.env.WORKOS_API_KEY);
+
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   });
 
   return router;
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>;
-  }
 }

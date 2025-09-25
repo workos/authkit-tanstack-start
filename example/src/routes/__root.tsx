@@ -3,7 +3,7 @@ import '@radix-ui/themes/styles.css';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
-import { getAuth, getSignInUrl } from '../authkit/serverFunctions';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';
@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 export const Route = createRootRoute({
   beforeLoad: async () => {
     const { user } = await getAuth();
+    console.log('DO WE GOT A USER?', user);
 
     return { user };
   },
@@ -30,7 +31,7 @@ export const Route = createRootRoute({
   }),
   loader: async ({ context }) => {
     const { user } = context;
-    const url = await getSignInUrl();
+    const url = await getSignInUrl({});
     return {
       user,
       url,

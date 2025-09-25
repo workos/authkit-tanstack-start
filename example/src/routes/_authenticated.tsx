@@ -1,5 +1,5 @@
 import { redirect, createFileRoute } from '@tanstack/react-router';
-import { getSignInUrl } from '../authkit/serverFunctions';
+import { getSignInUrl } from '@workos/authkit-tanstack-start/server';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ context, location }) => {

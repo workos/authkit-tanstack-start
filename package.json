@@ -34,7 +34,7 @@
   "devDependencies": {
     "@tanstack/react-router": "^1.131.36",
     "@tanstack/react-router-devtools": "^1.131.36",
-    "@tanstack/react-start": "^1.131.36",
+    "@tanstack/react-start": "^1.132.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "prettier": "^3.6.2",

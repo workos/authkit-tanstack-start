@@ -1,5 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
+// These imports should only be bundled on the server
+import { authkit } from './authkit.js';
+import { getConfig } from '@workos/authkit-session';
 
 // Type exports
 export interface GetAuthURLOptions {
@@ -47,7 +50,6 @@ export const terminateSession = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const request = getRequest();
     const { redirect } = await import('@tanstack/react-router');
-    const { authkit } = await import('./authkit.js');
 
     // Get current auth state
     const auth = await authkit.withAuth(request);
@@ -115,7 +117,6 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  */
 export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promise<UserInfo | NoUserInfo> => {
   const request = getRequest();
-  const { authkit } = await import('./authkit.js');
   const auth = await authkit.withAuth(request);
 
   if (!auth.user) {
@@ -145,8 +146,6 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
     const { returnPathname, screenHint, redirectUri } = options;
-    const { authkit } = await import('./authkit.js');
-    const { getConfig } = await import('@workos/authkit-session');
     const workos = authkit.getWorkOS();
 
     return workos.userManagement.getAuthorizationUrl({
@@ -213,7 +212,6 @@ export const signOut = terminateSession;
 export const handleCallback = createServerFn({ method: 'POST' })
   .inputValidator((data: { code: string; state?: string }) => data)
   .handler(async ({ data }) => {
-    const { authkit } = await import('./authkit.js');
     const request = getRequest();
 
     const result = await authkit.handleCallback(request, new Response(), data);

@@ -235,7 +235,7 @@ export const terminateSession = createServerFn({ method: 'POST' })
       throw redirect({
         to: data?.returnTo || '/',
         throw: true,
-        reloadDocument: true
+        reloadDocument: true,
       });
     }
 

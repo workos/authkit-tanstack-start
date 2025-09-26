@@ -1,7 +1,4 @@
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server';
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
 import { createWorkOSHandler } from '@workos/authkit-tanstack-start/server';
 
 /**
@@ -12,3 +9,4 @@ const handler = createWorkOSHandler(defaultStreamHandler);
 export default {
   fetch: createStartHandler(handler),
 };
+

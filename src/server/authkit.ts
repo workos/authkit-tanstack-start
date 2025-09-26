@@ -8,4 +8,3 @@ import { TanStackStartCookieSessionStorage } from './storage';
 export const authkit = createAuthKitFactory({
   sessionStorageFactory: (_config) => new TanStackStartCookieSessionStorage(getConfigurationProvider()),
 });
-

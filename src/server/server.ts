@@ -171,14 +171,15 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
   }
 
   return {
+    // FIXME: these tyeps
     user: auth.user,
-    sessionId: auth.sessionId,
-    organizationId: auth.organizationId,
-    role: auth.role,
-    permissions: auth.permissions,
-    entitlements: auth.entitlements,
+    sessionId: auth.sessionId!,
+    organizationId: (auth as any).organizationId,
+    role: (auth as any).role,
+    permissions: (auth as any).permissions,
+    entitlements: (auth as any).entitlements,
     impersonator: auth.impersonator,
-    accessToken: auth.accessToken,
+    accessToken: auth.accessToken!,
   };
 });
 
@@ -293,7 +294,11 @@ export async function handleCallbackRoute({ request }: { request: Request }): Pr
   try {
     // Handle the callback with the SDK
     const response = new Response();
-    const result = await authkit.handleCallback(request, response, { code, state });
+    const result = await authkit.handleCallback(request, response, {
+      code,
+      // FIXME: why is this here?
+      // state
+    });
 
     // Cleanup params and redirect
     url.searchParams.delete('code');
@@ -318,7 +323,7 @@ export async function handleCallbackRoute({ request }: { request: Request }): Pr
       status: 307,
       headers: {
         Location: url.toString(),
-        ...Object.fromEntries(result.response?.headers || []),
+        ...Object.fromEntries(Object.entries(result.response?.headers ?? {}) || []),
       },
     });
 

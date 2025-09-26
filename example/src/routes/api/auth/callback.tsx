@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { handleCallbackRoute } from '@workos/authkit-tanstack-start/server';
+import { handleCallbackRoute } from '@workos/authkit-tanstack-start/server-entry';
 
 export const Route = createFileRoute('/api/auth/callback')({
   server: {

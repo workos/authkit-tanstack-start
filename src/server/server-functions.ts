@@ -1,7 +1,5 @@
-import { authkit } from './authkit.js';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { getConfig } from '@workos/authkit-session';
 
 // Type exports
 export interface GetAuthURLOptions {
@@ -49,6 +47,7 @@ export const terminateSession = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const request = getRequest();
     const { redirect } = await import('@tanstack/react-router');
+    const { authkit } = await import('./authkit.js');
 
     // Get current auth state
     const auth = await authkit.withAuth(request);
@@ -116,6 +115,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  */
 export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promise<UserInfo | NoUserInfo> => {
   const request = getRequest();
+  const { authkit } = await import('./authkit.js');
   const auth = await authkit.withAuth(request);
 
   if (!auth.user) {
@@ -143,8 +143,10 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
  */
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
-  .handler(({ data: options = {} }) => {
+  .handler(async ({ data: options = {} }) => {
     const { returnPathname, screenHint, redirectUri } = options;
+    const { authkit } = await import('./authkit.js');
+    const { getConfig } = await import('@workos/authkit-session');
     const workos = authkit.getWorkOS();
 
     return workos.userManagement.getAuthorizationUrl({
@@ -183,3 +185,55 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const signOut = terminateSession;
+
+/**
+ * Handles the OAuth callback from WorkOS.
+ * This should be used in your callback route to complete the authentication flow.
+ *
+ * @example
+ * ```typescript
+ * // routes/api/auth/callback.tsx
+ * import { handleCallback } from '@workos/authkit-tanstack-start/server';
+ *
+ * export const Route = createFileRoute('/api/auth/callback')({
+ *   loader: async ({ request }) => {
+ *     const url = new URL(request.url);
+ *     const code = url.searchParams.get('code');
+ *
+ *     if (!code) {
+ *       throw new Error('Missing authorization code');
+ *     }
+ *
+ *     const result = await handleCallback({ code });
+ *     // Handle the result...
+ *   },
+ * });
+ * ```
+ */
+export const handleCallback = createServerFn({ method: 'POST' })
+  .inputValidator((data: { code: string; state?: string }) => data)
+  .handler(async ({ data }) => {
+    const { authkit } = await import('./authkit.js');
+    const request = getRequest();
+
+    const result = await authkit.handleCallback(request, new Response(), data);
+
+    // Decode state if provided
+    let returnPathname = '/';
+    if (data.state) {
+      try {
+        const decoded = JSON.parse(atob(data.state));
+        returnPathname = decoded.returnPathname || '/';
+      } catch {
+        // Invalid state, use default
+      }
+    }
+
+    // Extract serializable data from result
+    return {
+      success: true,
+      returnPathname,
+      user: result.authResponse?.user,
+      accessToken: result.authResponse?.accessToken,
+    };
+  });

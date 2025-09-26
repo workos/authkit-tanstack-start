@@ -2,8 +2,8 @@
  * Server-side exports for @workos/authkit-tanstack-start/server
  */
 
-// Storage implementation
-export { TanStackStartCookieSessionStorage } from './storage';
+// Note: Storage implementation is omitted from public exports
+// TanStackStartCookieSessionStorage should only be used internally
 
 export type { Session, AuthResult, BaseTokenClaims, CustomClaims } from '@workos/authkit-session';
 
@@ -21,11 +21,12 @@ export {
   getSignUpUrl,
   terminateSession,
   signOut,
+  handleCallback,
 } from './server-functions.js';
 
-export { createWorkOSHandler, requireAuth, handleCallbackRoute } from './server.js';
+// Note: createWorkOSHandler, requireAuth, and handleCallbackRoute are omitted
+// These should only be imported in server.ts files, not in isomorphic route files
 
-import { authkit } from './authkit';
-
-// Re-export server-specific utilities from authkit (non server-function versions)
-export const { withAuth, refreshSession, handleCallback } = authkit;
+// Note: Direct exports of authkit functions are intentionally omitted here
+// to prevent client-side bundling of server dependencies.
+// Use the server functions from server-functions.ts instead.

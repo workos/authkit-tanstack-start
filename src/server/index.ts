@@ -15,16 +15,15 @@ export {
   type UserInfo,
   type NoUserInfo,
   type GetAuthURLOptions,
-  createWorkOSHandler,
   getAuth,
   getAuthorizationUrl,
   getSignInUrl,
   getSignUpUrl,
-  requireAuth,
   terminateSession,
   signOut,
-  handleCallbackRoute,
-} from './server';
+} from './server-functions.js';
+
+export { createWorkOSHandler, requireAuth, handleCallbackRoute } from './server.js';
 
 import { authkit } from './authkit';
 

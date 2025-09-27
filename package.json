@@ -10,14 +10,6 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./server": {
-      "import": "./dist/server/index.js",
-      "types": "./dist/server/index.d.ts"
-    },
-    "./server-entry": {
-      "import": "./dist/server-entry/index.js",
-      "types": "./dist/server-entry/index.d.ts"
     }
   },
   "files": [

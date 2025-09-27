@@ -1,4 +1,7 @@
+'use server';
+
 import { authkit } from './authkit.js';
+import { redirect } from '@tanstack/react-router';
 
 type Handler = (request: Request, env?: any) => Promise<Response> | Response;
 type TanStackHandler = (ctx: {
@@ -30,6 +33,7 @@ type TanStackHandler = (ctx: {
 export function createWorkOSHandler(handler: TanStackHandler): TanStackHandler;
 export function createWorkOSHandler(handler: Handler): Handler;
 export function createWorkOSHandler(handler: any): any {
+
   // Check if this is a TanStack handler (has ctx with request property)
   return async (ctxOrRequest: any, env?: any): Promise<Response> => {
     const isTanStackHandler = ctxOrRequest && typeof ctxOrRequest === 'object' && 'request' in ctxOrRequest;
@@ -83,13 +87,12 @@ export function createWorkOSHandler(handler: any): any {
  * ```
  */
 export async function requireAuth({ context, location }: any) {
+
   if (!context.user) {
     const signInUrl = await authkit.getSignInUrl({
       redirectUri: `${location.origin}/api/auth/callback`,
     });
 
-    // Use TanStack Router's redirect
-    const { redirect } = await import('@tanstack/react-router');
     throw redirect({ href: signInUrl });
   }
 }
@@ -113,6 +116,7 @@ export async function requireAuth({ context, location }: any) {
  * ```
  */
 export async function handleCallbackRoute({ request }: { request: Request }): Promise<Response> {
+
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');

@@ -9,7 +9,7 @@ export default defineConfig({
           name: 'server',
           globals: true,
           environment: 'node',
-          include: ['tests/**/*.spec.{ts,tsx}', 'src/server/**/*.spec.{ts,tsx}'],
+          include: ['src/server/**/*.spec.{ts,tsx}', 'tests/**/*.spec.{ts,tsx}'],
           setupFiles: ['./tests/setup-server.ts'],
         },
       },
@@ -26,7 +26,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'dist/', 'example/', '*.config.ts', '*.config.js', 'tests/'],
+      exclude: ['node_modules/', 'dist/', 'example/', '*.config.ts', '*.config.js', 'tests/', '**/*.spec.ts'],
     },
   },
   resolve: {

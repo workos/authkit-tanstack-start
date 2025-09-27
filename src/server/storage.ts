@@ -9,13 +9,7 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     const cookieHeader = request.headers.get('cookie');
     if (!cookieHeader) return null;
 
-    const cookies = Object.fromEntries(
-      cookieHeader.split(';').map((c) => {
-        const [key, ...val] = c.trim().split('=');
-        return [key, val.join('=')];
-      }),
-    );
-
+    const cookies = this.parseCookies(cookieHeader);
     const value = cookies[this.cookieName];
     return value ? decodeURIComponent(value) : null;
   }
@@ -32,10 +26,20 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
         })
       : new Response();
 
+    // Apply all headers at once
     Object.entries(headers).forEach(([key, value]) => {
       newResponse.headers.append(key, value);
     });
 
     return { response: newResponse };
+  }
+
+  private parseCookies(cookieHeader: string): Record<string, string> {
+    return Object.fromEntries(
+      cookieHeader.split(';').map((cookie) => {
+        const [key, ...valueParts] = cookie.trim().split('=');
+        return [key, valueParts.join('=')];
+      }),
+    );
   }
 }

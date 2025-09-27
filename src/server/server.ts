@@ -3,7 +3,6 @@
 import { authkit } from './authkit.js';
 import { redirect } from '@tanstack/react-router';
 
-type Handler = (request: Request, env?: any) => Promise<Response> | Response;
 type TanStackHandler = (ctx: {
   request: Request;
   router: any;
@@ -21,7 +20,7 @@ type TanStackHandler = (ctx: {
  * ```typescript
  * // src/server.ts
  * import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
- * import { createWorkOSHandler } from '@workos/authkit-tanstack-start/server';
+ * import { createWorkOSHandler } from '@workos/authkit-tanstack-start';
  *
  * const handler = createWorkOSHandler(defaultStreamHandler);
  *
@@ -30,44 +29,21 @@ type TanStackHandler = (ctx: {
  * };
  * ```
  */
-export function createWorkOSHandler(handler: TanStackHandler): TanStackHandler;
-export function createWorkOSHandler(handler: Handler): Handler;
-export function createWorkOSHandler(handler: any): any {
+export function createWorkOSHandler(handler: TanStackHandler): TanStackHandler {
+  return async (ctx) => {
+    const { request } = ctx;
 
-  // Check if this is a TanStack handler (has ctx with request property)
-  return async (ctxOrRequest: any, env?: any): Promise<Response> => {
-    const isTanStackHandler = ctxOrRequest && typeof ctxOrRequest === 'object' && 'request' in ctxOrRequest;
+    // Use withAuth to check and refresh the session
+    const authResult = await authkit.withAuth(request);
 
-    if (isTanStackHandler) {
-      // Handle TanStack Start's handler signature
-      const ctx = ctxOrRequest;
-      const { request, router, responseHeaders } = ctx;
+    // Attach auth context to request for downstream use
+    Object.defineProperty(request, 'authContext', {
+      value: authResult,
+      writable: false,
+      configurable: true,
+    });
 
-      // Use withAuth to check and refresh the session
-      const authResult = await authkit.withAuth(request);
-
-      // Attach auth context directly to the request
-      (request as any).authContext = authResult;
-
-      // Call the original handler with the context
-      return handler({
-        request,
-        router,
-        responseHeaders,
-      });
-    } else {
-      // Handle standard handler signature
-      const request = ctxOrRequest as Request;
-
-      // Use withAuth to check and refresh the session
-      const authResult = await authkit.withAuth(request);
-
-      // Attach auth context directly to the request
-      (request as any).authContext = authResult;
-
-      // Call the original handler with the request
-      return handler(request, env);
-    }
+    return handler(ctx);
   };
 }
 
@@ -79,15 +55,14 @@ export function createWorkOSHandler(handler: any): any {
  * ```typescript
  * // routes/_authenticated.tsx
  * import { createFileRoute } from '@tanstack/react-router';
- * import { requireAuth } from '@workos/authkit-tanstack-start/server';
+ * import { requireAuth } from '@workos/authkit-tanstack-start';
  *
  * export const Route = createFileRoute('/_authenticated')({
  *   beforeLoad: requireAuth,
  * });
  * ```
  */
-export async function requireAuth({ context, location }: any) {
-
+export async function requireAuth({ context, location }: { context: any; location: Location }) {
   if (!context.user) {
     const signInUrl = await authkit.getSignInUrl({
       redirectUri: `${location.origin}/api/auth/callback`,
@@ -104,7 +79,7 @@ export async function requireAuth({ context, location }: any) {
  * @example
  * ```typescript
  * // routes/api/auth/callback.tsx
- * import { handleCallbackRoute } from '@workos/authkit-tanstack-start/server';
+ * import { handleCallbackRoute } from '@workos/authkit-tanstack-start';
  *
  * export const Route = createFileRoute('/api/auth/callback')({
  *   server: {
@@ -116,13 +91,9 @@ export async function requireAuth({ context, location }: any) {
  * ```
  */
 export async function handleCallbackRoute({ request }: { request: Request }): Promise<Response> {
-
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
-  let returnPathname = state && state !== 'null' ? JSON.parse(atob(state)).returnPathname : null;
-
-  console.log('HANDLE CALLBACK', { code, state, returnPathname });
 
   if (!code) {
     return new Response(JSON.stringify({ error: { message: 'Missing authorization code' } }), {
@@ -132,65 +103,83 @@ export async function handleCallbackRoute({ request }: { request: Request }): Pr
   }
 
   try {
-    // Handle the callback with the SDK
+    // Decode return pathname from state
+    const returnPathname = decodeReturnPathname(state);
+
+    // Handle OAuth callback
     const response = new Response();
-    const result = await authkit.handleCallback(request, response, {
-      code,
-      // FIXME: why is this here?
-      // state
-    });
+    const result = await authkit.handleCallback(request, response, { code });
 
-    console.log('RESULT', result);
+    // Build redirect URL
+    const redirectUrl = buildRedirectUrl(url, returnPathname);
 
-    // Cleanup params and redirect
-    url.searchParams.delete('code');
-    url.searchParams.delete('state');
+    // Extract session headers from the result
+    const sessionHeaders = extractSessionHeaders(result.response);
 
-    returnPathname = returnPathname ?? '/';
-
-    // Extract the search params if they are present
-    if (returnPathname.includes('?')) {
-      const newUrl = new URL(returnPathname, 'https://example.com');
-      url.pathname = newUrl.pathname;
-
-      for (const [key, value] of newUrl.searchParams) {
-        url.searchParams.append(key, value);
-      }
-    } else {
-      url.pathname = returnPathname;
-    }
-
-    // Create redirect response with session cookies
-    // Extract headers from the nested response object
-    const responseHeaders: Record<string, string> = {};
-    if (result.response?.response?.headers) {
-      result.response.response.headers.forEach((value: string, key: string) => {
-        responseHeaders[key] = value;
-      });
-    }
-
-    const redirectResponse = new Response(null, {
+    return new Response(null, {
       status: 307,
       headers: {
-        Location: url.toString(),
-        ...responseHeaders,
+        Location: redirectUrl.toString(),
+        ...sessionHeaders,
       },
     });
-
-    return redirectResponse;
   } catch (error) {
-    console.error('Callback error:', error);
     return new Response(
       JSON.stringify({
         error: {
           message: 'Authentication failed',
-          description: "Couldn't sign in. If you are not sure what happened, please contact your organization admin.",
+          description: "Couldn't sign in. Please contact your organization admin if the issue persists.",
         },
       }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
     );
   }
+}
+
+// Helper functions
+function decodeReturnPathname(state: string | null): string {
+  if (!state || state === 'null') return '/';
+
+  try {
+    const decoded = JSON.parse(atob(state));
+    return decoded.returnPathname || '/';
+  } catch {
+    return '/';
+  }
+}
+
+function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
+  const url = new URL(originalUrl);
+
+  // Clean up OAuth params
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+
+  // Handle pathname with query params
+  if (returnPathname.includes('?')) {
+    const targetUrl = new URL(returnPathname, url.origin);
+    url.pathname = targetUrl.pathname;
+
+    targetUrl.searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+  } else {
+    url.pathname = returnPathname;
+  }
+
+  return url;
+}
+
+function extractSessionHeaders(response: any): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  // Handle nested response structure from authkit
+  const targetResponse = response?.response || response;
+  if (targetResponse?.headers) {
+    targetResponse.headers.forEach((value: string, key: string) => {
+      headers[key] = value;
+    });
+  }
+
+  return headers;
 }

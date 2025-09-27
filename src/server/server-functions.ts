@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-// These imports should only be bundled on the server
+import { redirect } from '@tanstack/react-router';
 import { authkit } from './authkit.js';
 import { getConfig } from '@workos/authkit-session';
+import type { User, Impersonator } from '@workos-inc/node';
 
 // Type exports
 export interface GetAuthURLOptions {
@@ -12,50 +13,39 @@ export interface GetAuthURLOptions {
 }
 
 export interface UserInfo {
-  user: import('@workos-inc/node').User;
+  user: User;
   sessionId: string;
   organizationId?: string;
   role?: string;
-  permissions?: Array<string>;
-  entitlements?: Array<string>;
-  impersonator?: import('@workos-inc/node').Impersonator;
+  permissions?: string[];
+  entitlements?: string[];
+  impersonator?: Impersonator;
   accessToken: string;
 }
 
 export interface NoUserInfo {
   user: null;
-  sessionId?: undefined;
-  organizationId?: undefined;
-  role?: undefined;
-  permissions?: undefined;
-  entitlements?: undefined;
-  impersonator?: undefined;
-  accessToken?: undefined;
 }
 
 /**
- * Terminates the current session and returns the logout URL.
- * This server function handles session termination with WorkOS.
+ * Signs out the current user by terminating their session.
  *
  * @example
  * ```typescript
- * import { terminateSession } from '@workos/authkit-tanstack-start/server';
+ * import { signOut } from '@workos/authkit-tanstack-start';
  *
  * // In a server function or route
- * await terminateSession({ returnTo: '/' });
+ * await signOut({ returnTo: '/' });
  * ```
  */
-export const terminateSession = createServerFn({ method: 'POST' })
+export const signOut = createServerFn({ method: 'POST' })
   .inputValidator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }) => {
     const request = getRequest();
-    const { redirect } = await import('@tanstack/react-router');
-
-    // Get current auth state
     const auth = await authkit.withAuth(request);
 
     if (!auth.user || !auth.sessionId) {
-      // No session to terminate, just redirect
+      // No session to terminate
       throw redirect({
         to: data?.returnTo || '/',
         throw: true,
@@ -63,16 +53,13 @@ export const terminateSession = createServerFn({ method: 'POST' })
       });
     }
 
-    // Get the WorkOS client
     const workos = authkit.getWorkOS();
-
-    // Get the logout URL from WorkOS (this will also revoke the session)
     const logoutUrl = workos.userManagement.getLogoutUrl({
       sessionId: auth.sessionId,
       returnTo: data?.returnTo,
     });
 
-    // Clear the session cookie and redirect to WorkOS logout
+    // Clear session and redirect to WorkOS logout
     throw redirect({
       href: logoutUrl,
       throw: true,
@@ -84,25 +71,14 @@ export const terminateSession = createServerFn({ method: 'POST' })
   });
 
 /**
- * Server function to get the sign-up URL.
- * Convenience wrapper around getAuthorizationUrl with sign-up screen hint.
- */
-export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .inputValidator((returnPathname?: string) => returnPathname)
-  .handler(async ({ data: returnPathname }) => {
-    return await getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-up' } });
-  });
-
-/**
  * Get authentication context from the current request.
- * This is a server function that returns UserInfo or NoUserInfo.
  *
  * @returns The authentication context with user info or null user
  *
  * @example
  * ```typescript
  * // In a route loader
- * import { getAuth } from '@workos/authkit-tanstack-start/server';
+ * import { getAuth } from '@workos/authkit-tanstack-start';
  *
  * export const Route = createFileRoute('/protected')({
  *   loader: async () => {
@@ -120,26 +96,26 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
   const auth = await authkit.withAuth(request);
 
   if (!auth.user) {
-    return {
-      user: null,
-    };
+    return { user: null };
   }
 
+  // Type assertion needed until authkit-session exposes proper types
+  const extendedAuth = auth as any;
+
   return {
-    // FIXME: these tyeps
     user: auth.user,
     sessionId: auth.sessionId!,
-    organizationId: (auth as any).organizationId,
-    role: (auth as any).role,
-    permissions: (auth as any).permissions,
-    entitlements: (auth as any).entitlements,
+    organizationId: extendedAuth.organizationId,
+    role: extendedAuth.role,
+    permissions: extendedAuth.permissions,
+    entitlements: extendedAuth.entitlements,
     impersonator: auth.impersonator,
     accessToken: auth.accessToken!,
   };
 });
 
 /**
- * Server function to get the authorization URL for WorkOS authentication.
+ * Get the authorization URL for WorkOS authentication.
  * Supports different screen hints and return paths.
  */
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
@@ -158,76 +134,49 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   });
 
 /**
- * Server function to get the sign-in URL.
+ * Get the sign-in URL.
  * Convenience wrapper around getAuthorizationUrl with sign-in screen hint.
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((returnPathname?: string) => returnPathname)
   .handler(async ({ data: returnPathname }) => {
-    return await getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-in' } });
+    return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-in' } });
   });
 
 /**
- * Signs out the current user by terminating their session.
- * Alias for terminateSession for convenience.
- *
- * @example
- * ```typescript
- * import { signOut } from '@workos/authkit-tanstack-start/server';
- *
- * // In a logout route
- * export const Route = createFileRoute('/logout')({
- *   loader: async () => {
- *     await signOut();
- *   },
- * });
- * ```
+ * Get the sign-up URL.
+ * Convenience wrapper around getAuthorizationUrl with sign-up screen hint.
  */
-export const signOut = terminateSession;
+export const getSignUpUrl = createServerFn({ method: 'GET' })
+  .inputValidator((returnPathname?: string) => returnPathname)
+  .handler(async ({ data: returnPathname }) => {
+    return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-up' } });
+  });
+
+// Alias for backward compatibility
+export const terminateSession = signOut;
 
 /**
  * Handles the OAuth callback from WorkOS.
- * This should be used in your callback route to complete the authentication flow.
+ * This server function is primarily for programmatic use.
+ * For route handlers, use handleCallbackRoute instead.
  *
  * @example
  * ```typescript
- * // routes/api/auth/callback.tsx
- * import { handleCallback } from '@workos/authkit-tanstack-start/server';
+ * import { handleCallback } from '@workos/authkit-tanstack-start';
  *
- * export const Route = createFileRoute('/api/auth/callback')({
- *   loader: async ({ request }) => {
- *     const url = new URL(request.url);
- *     const code = url.searchParams.get('code');
- *
- *     if (!code) {
- *       throw new Error('Missing authorization code');
- *     }
- *
- *     const result = await handleCallback({ code });
- *     // Handle the result...
- *   },
- * });
+ * const result = await handleCallback({ code: 'auth_code_xyz' });
  * ```
  */
 export const handleCallback = createServerFn({ method: 'POST' })
   .inputValidator((data: { code: string; state?: string }) => data)
   .handler(async ({ data }) => {
     const request = getRequest();
-
     const result = await authkit.handleCallback(request, new Response(), data);
 
-    // Decode state if provided
-    let returnPathname = '/';
-    if (data.state) {
-      try {
-        const decoded = JSON.parse(atob(data.state));
-        returnPathname = decoded.returnPathname || '/';
-      } catch {
-        // Invalid state, use default
-      }
-    }
+    // Decode return pathname from state
+    const returnPathname = data.state ? decodeState(data.state) : '/';
 
-    // Extract serializable data from result
     return {
       success: true,
       returnPathname,
@@ -235,3 +184,13 @@ export const handleCallback = createServerFn({ method: 'POST' })
       accessToken: result.authResponse?.accessToken,
     };
   });
+
+// Helper to decode state parameter
+function decodeState(state: string): string {
+  try {
+    const decoded = JSON.parse(atob(state));
+    return decoded.returnPathname || '/';
+  } catch {
+    return '/';
+  }
+}

@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { authkit } from './authkit.js';
 import type { UserInfo, NoUserInfo } from './server-functions.js';
-import type { Organization } from '@workos-inc/node';
 
 /**
  * Server actions for client-side hooks.
@@ -106,12 +105,3 @@ export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handl
   },
 );
 
-/**
- * Get organization details by ID.
- */
-export const getOrganizationAction = createServerFn({ method: 'GET' })
-  .inputValidator((organizationId: string) => organizationId)
-  .handler(async ({ data: organizationId }): Promise<Organization> => {
-    const workos = authkit.getWorkOS();
-    return await workos.organizations.getOrganization(organizationId);
-  });

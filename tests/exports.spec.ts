@@ -33,7 +33,7 @@ describe('SDK exports', () => {
       'requireAuth',
     ];
 
-    typeExports.forEach(exportName => {
+    typeExports.forEach((exportName) => {
       expect(exports[exportName]).toBeDefined();
     });
   });

@@ -3,7 +3,7 @@ import { TanStackStartCookieSessionStorage } from './storage';
 
 describe('TanStackStartCookieSessionStorage', () => {
   const storage = new TanStackStartCookieSessionStorage({
-    getValue: (key: string) => key === 'cookieName' ? 'wos_session' : undefined,
+    getValue: (key: string) => (key === 'cookieName' ? 'wos_session' : undefined),
   } as any);
 
   describe('getSession', () => {

@@ -17,8 +17,10 @@ export interface UserInfo {
   sessionId: string;
   organizationId?: string;
   role?: string;
+  roles?: string[];
   permissions?: string[];
   entitlements?: string[];
+  featureFlags?: string[];
   impersonator?: Impersonator;
   accessToken: string;
 }
@@ -107,8 +109,10 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
     sessionId: auth.sessionId!,
     organizationId: extendedAuth.organizationId,
     role: extendedAuth.role,
+    roles: extendedAuth.roles,
     permissions: extendedAuth.permissions,
     entitlements: extendedAuth.entitlements,
+    featureFlags: extendedAuth.featureFlags,
     impersonator: auth.impersonator,
     accessToken: auth.accessToken!,
   };

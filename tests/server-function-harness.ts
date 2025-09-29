@@ -78,12 +78,7 @@ export function captureRedirect(fn: Function) {
 }
 
 // Helper to mock authkit responses
-export function mockAuthkit(responses: {
-  withAuth?: any;
-  getWorkOS?: any;
-  handleCallback?: any;
-  getSignInUrl?: any;
-}) {
+export function mockAuthkit(responses: { withAuth?: any; getWorkOS?: any; handleCallback?: any; getSignInUrl?: any }) {
   const authkit = {
     withAuth: vi.fn().mockResolvedValue(responses.withAuth || { user: null }),
     getWorkOS: vi.fn().mockReturnValue(
@@ -92,7 +87,7 @@ export function mockAuthkit(responses: {
           getAuthorizationUrl: vi.fn(),
           getLogoutUrl: vi.fn(),
         },
-      }
+      },
     ),
     handleCallback: vi.fn().mockResolvedValue(responses.handleCallback || {}),
     getSignInUrl: vi.fn().mockResolvedValue(responses.getSignInUrl || ''),

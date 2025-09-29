@@ -22,7 +22,7 @@ export async function executeServerFunction<T>(
   options: {
     request?: Request;
     data?: any;
-  } = {}
+  } = {},
 ) {
   const context = createTestContext();
   context.request = options.request || new Request('http://test.local');

@@ -214,6 +214,8 @@ describe('useAccessToken', () => {
   });
 
   it('clears token when user logs out', async () => {
+    vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
+
     const { rerender } = renderHook(() => useAccessToken());
 
     // Initially has user
@@ -234,6 +236,11 @@ describe('useAccessToken', () => {
     });
 
     rerender();
+
+    // Wait for initial effects to settle
+    await waitFor(() => {
+      expect(tokenStore.getAccessTokenSilently).toHaveBeenCalled();
+    });
 
     // User logs out
     vi.mocked(useAuth).mockReturnValue({
@@ -276,9 +283,15 @@ describe('useAccessToken', () => {
       signOut: vi.fn(),
     });
 
+    vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
     vi.mocked(tokenStore.refreshToken).mockResolvedValue('new-token');
 
     const { result } = renderHook(() => useAccessToken());
+
+    // Wait for initial effect to complete
+    await waitFor(() => {
+      expect(tokenStore.getAccessTokenSilently).toHaveBeenCalled();
+    });
 
     const token = await result.current.refresh();
 
@@ -303,9 +316,15 @@ describe('useAccessToken', () => {
       signOut: vi.fn(),
     });
 
+    vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
     vi.mocked(tokenStore.getAccessToken).mockResolvedValue('fresh-token');
 
     const { result } = renderHook(() => useAccessToken());
+
+    // Wait for initial effect to complete
+    await waitFor(() => {
+      expect(tokenStore.getAccessTokenSilently).toHaveBeenCalled();
+    });
 
     const token = await result.current.getAccessToken();
 
@@ -332,6 +351,8 @@ describe('useAccessToken', () => {
   });
 
   it('clears token when session changes', async () => {
+    vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
+
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
       sessionId: 'session_123',
@@ -349,6 +370,11 @@ describe('useAccessToken', () => {
     });
 
     const { rerender } = renderHook(() => useAccessToken());
+
+    // Wait for initial effects to settle
+    await waitFor(() => {
+      expect(tokenStore.getAccessTokenSilently).toHaveBeenCalled();
+    });
 
     // Session changes
     vi.mocked(useAuth).mockReturnValue({
@@ -374,7 +400,7 @@ describe('useAccessToken', () => {
     });
   });
 
-  it('shows initial loading when fetching first token', () => {
+  it('shows initial loading when fetching first token', async () => {
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
       sessionId: 'session_123',
@@ -398,10 +424,16 @@ describe('useAccessToken', () => {
     });
 
     vi.mocked(tokenStore.parseToken).mockReturnValue(null);
+    vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAccessToken());
 
     // Should show loading on initial mount when user exists but no token
     expect(result.current.loading).toBe(true);
+
+    // Wait for effects to settle
+    await waitFor(() => {
+      expect(result.current.loading).toBe(true);
+    });
   });
 });

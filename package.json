@@ -24,7 +24,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },

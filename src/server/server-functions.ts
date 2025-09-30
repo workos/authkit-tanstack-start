@@ -101,18 +101,15 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
     return { user: null };
   }
 
-  // Type assertion needed until authkit-session exposes proper types
-  const extendedAuth = auth as any;
-
   return {
     user: auth.user,
     sessionId: auth.sessionId!,
-    organizationId: extendedAuth.organizationId,
-    role: extendedAuth.role,
-    roles: extendedAuth.roles,
-    permissions: extendedAuth.permissions,
-    entitlements: extendedAuth.entitlements,
-    featureFlags: extendedAuth.featureFlags,
+    organizationId: auth.claims?.org_id,
+    role: auth.claims?.role,
+    roles: auth.claims?.roles,
+    permissions: auth.claims?.permissions,
+    entitlements: auth.claims?.entitlements,
+    featureFlags: auth.claims?.feature_flags,
     impersonator: auth.impersonator,
     accessToken: auth.accessToken!,
   };

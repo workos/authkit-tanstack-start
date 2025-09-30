@@ -77,11 +77,14 @@ describe('Server Functions', () => {
         user: mockUser,
         sessionId: 'session_123',
         accessToken: 'access_token',
-        organizationId: 'org_123',
-        role: 'member',
-        permissions: ['read'],
-        entitlements: [],
         impersonator: undefined,
+        claims: {
+          sid: 'session_123',
+          org_id: 'org_123',
+          role: 'member',
+          permissions: ['read'],
+          entitlements: [],
+        },
       });
 
       const result = await serverFunctions.getAuth();
@@ -95,6 +98,8 @@ describe('Server Functions', () => {
         permissions: ['read'],
         entitlements: [],
         impersonator: undefined,
+        featureFlags: undefined,
+        roles: undefined,
       });
     });
 

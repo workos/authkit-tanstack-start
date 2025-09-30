@@ -30,17 +30,15 @@ export const getAuthAction = createServerFn({ method: 'GET' })
       return { user: null };
     }
 
-    const extendedAuth = auth as any;
-
     return {
       user: auth.user,
       sessionId: auth.sessionId!,
-      organizationId: extendedAuth.organizationId,
-      role: extendedAuth.role,
-      roles: extendedAuth.roles,
-      permissions: extendedAuth.permissions,
-      entitlements: extendedAuth.entitlements,
-      featureFlags: extendedAuth.featureFlags,
+      organizationId: auth.claims?.org_id,
+      role: auth.claims?.role,
+      roles: auth.claims?.roles,
+      permissions: auth.claims?.permissions,
+      entitlements: auth.claims?.entitlements,
+      featureFlags: auth.claims?.feature_flags,
       impersonator: auth.impersonator,
     };
   });
@@ -54,27 +52,33 @@ export const refreshAuthAction = createServerFn({ method: 'POST' })
     const request = getRequest();
     const session = await authkit.withAuth(request);
 
-    if (!session.user || !session.accessToken) {
+    if (!session.user || !session.accessToken || !session.refreshToken) {
       return { user: null };
     }
 
-    const result = await authkit.refreshSession(session as any);
+    const result = await authkit.refreshSession(
+      {
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        user: session.user,
+        impersonator: session.impersonator,
+      },
+      options?.organizationId,
+    );
 
     if (!result.user) {
       return { user: null };
     }
 
-    const extendedAuth = result as any;
-
     return {
       user: result.user,
-      sessionId: result.sessionId!,
-      organizationId: extendedAuth.organizationId,
-      role: extendedAuth.role,
-      roles: extendedAuth.roles,
-      permissions: extendedAuth.permissions,
-      entitlements: extendedAuth.entitlements,
-      featureFlags: extendedAuth.featureFlags,
+      sessionId: result.sessionId,
+      organizationId: result.organizationId,
+      role: result.role,
+      roles: result.roles,
+      permissions: result.permissions,
+      entitlements: result.entitlements,
+      featureFlags: result.claims?.feature_flags,
       impersonator: result.impersonator,
     };
   });
@@ -96,12 +100,16 @@ export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handl
     const request = getRequest();
     const session = await authkit.withAuth(request);
 
-    if (!session.user || !session.accessToken) {
+    if (!session.user || !session.accessToken || !session.refreshToken) {
       return undefined;
     }
 
-    const result = await authkit.refreshSession(session as any);
+    const result = await authkit.refreshSession({
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      user: session.user,
+      impersonator: session.impersonator,
+    });
     return result.accessToken;
   },
 );
-

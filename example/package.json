@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "start": "vite start",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

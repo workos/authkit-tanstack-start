@@ -71,7 +71,33 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
   );
 
   const handleSignOut = useCallback(async ({ returnTo }: { returnTo?: string } = {}) => {
-    await signOut({ data: { returnTo } });
+    try {
+      await signOut({ data: { returnTo } });
+    } catch (error) {
+      // Server function throws redirect - TanStack Start returns it as Response
+      // We need to extract the redirect URL and navigate manually
+      if (error instanceof Response) {
+        // Check for Location header (standard HTTP redirect)
+        const location = error.headers.get('Location');
+        if (location) {
+          window.location.href = location;
+          return;
+        }
+        // For TanStack redirects, try to parse the response body
+        try {
+          const data = await error.json();
+          if (data?.href) {
+            window.location.href = data.href;
+            return;
+          }
+        } catch {
+          // If JSON parsing fails, just reload
+          window.location.href = returnTo || '/';
+          return;
+        }
+      }
+      throw error;
+    }
   }, []);
 
   useEffect(() => {

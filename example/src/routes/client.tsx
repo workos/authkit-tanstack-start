@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { Badge, Box, Button, Code, Flex, Heading, Text, TextField, Callout } from '@radix-ui/themes';
 import { useAuth, useAccessToken } from '@workos/authkit-tanstack-start/client';
 
@@ -18,7 +18,6 @@ function RouteComponent() {
     entitlements,
     featureFlags,
     impersonator,
-    signOut,
   } = useAuth();
   const { accessToken, loading: tokenLoading, error: tokenError, refresh, getAccessToken } = useAccessToken();
 
@@ -238,8 +237,8 @@ function RouteComponent() {
       </Flex>
 
       <Flex justify="center" mt="4">
-        <Button onClick={() => signOut({ returnTo: '/' })} color="red" variant="soft">
-          Sign Out
+        <Button asChild color="red" variant="soft">
+          <Link to="/logout">Sign Out</Link>
         </Button>
       </Flex>
     </Flex>

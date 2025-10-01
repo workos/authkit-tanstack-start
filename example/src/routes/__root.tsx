@@ -1,6 +1,6 @@
 import { Box, Button, Card, Container, Flex, Theme } from '@radix-ui/themes';
-import '@radix-ui/themes/styles.css';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import appCssUrl from '../app.css?url';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
 import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
@@ -28,6 +28,7 @@ export const Route = createRootRoute({
         title: 'AuthKit Example in TanStack Start',
       },
     ],
+    links: [{ rel: 'stylesheet', href: appCssUrl }],
   }),
   loader: async ({ context }) => {
     const url = await getSignInUrl({});

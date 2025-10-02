@@ -1,5 +1,5 @@
 import { createStart } from '@tanstack/react-start';
-import { authkitMiddleware } from '@workos/authkit-tanstack-start/server';
+import { authkitMiddleware } from '@workos/authkit-tanstack-start';
 
 /**
  * Configure TanStack Start with AuthKit middleware.

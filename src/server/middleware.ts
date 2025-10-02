@@ -9,7 +9,7 @@ import { authkit } from './authkit.js';
  * ```typescript
  * // In your start.ts
  * import { createStart } from '@tanstack/react-start';
- * import { authkitMiddleware } from '@workos/authkit-tanstack-start/server';
+ * import { authkitMiddleware } from '@workos/authkit-tanstack-start';
  *
  * export const startInstance = createStart(() => {
  *   return {
@@ -20,24 +20,6 @@ import { authkit } from './authkit.js';
  */
 export const authkitMiddleware = () => {
   return createMiddleware().server(async (args) => {
-    const url = new URL(args.request.url);
-
-    // Skip middleware for OAuth callback route to avoid interfering with code exchange
-    if (url.pathname === '/api/auth/callback') {
-      return args.next({
-        context: {
-          auth: () => ({
-            user: null,
-            accessToken: undefined,
-            refreshToken: undefined,
-            sessionId: undefined,
-            claims: undefined,
-            impersonator: undefined,
-          }),
-        },
-      });
-    }
-
     // authkit.withAuth handles token validation, refresh, and session decryption
     const authResult = await authkit.withAuth(args.request);
 

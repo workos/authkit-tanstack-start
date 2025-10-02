@@ -23,7 +23,10 @@ export {
 } from './server/server-functions.js';
 
 // Server utilities for route handlers
-export { createWorkOSHandler, handleCallbackRoute, requireAuth, authkitMiddleware } from './server/server.js';
+export { createWorkOSHandler, handleCallbackRoute, requireAuth } from './server/server.js';
+
+// Middleware for TanStack Start v1.0
+export { authkitMiddleware } from './server/middleware.js';
 
 // Re-export commonly used types from local definitions (prevents client bundling issues)
 export type { User, Impersonator, Session, AuthResult, BaseTokenClaims, CustomClaims } from './types.js';

@@ -187,6 +187,3 @@ function extractSessionHeaders(response: any): Record<string, string> {
 
   return headers;
 }
-
-// Export middleware for TanStack Start v1.0
-export { authkitMiddleware } from './middleware.js';

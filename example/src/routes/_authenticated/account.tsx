@@ -6,21 +6,21 @@ import { getAuth } from '@workos/authkit-tanstack-start';
 export const Route = createFileRoute('/_authenticated/account')({
   component: RouteComponent,
   loader: async () => {
-    const { user, role, permissions } = await getAuth();
+    const auth = await getAuth();
 
     const userFields: Array<[label: string, value: string | undefined]> = [
-      ['First name', user?.firstName ?? ''],
-      ['Last name', user?.lastName ?? ''],
-      ['Email', user?.email],
-      ['Id', user?.id],
+      ['First name', auth.user?.firstName ?? ''],
+      ['Last name', auth.user?.lastName ?? ''],
+      ['Email', auth.user?.email],
+      ['Id', auth.user?.id],
     ];
 
-    if (role) {
-      userFields.push(['Role', role]);
+    if (auth.user && 'role' in auth && auth.role) {
+      userFields.push(['Role', auth.role]);
     }
 
-    if (permissions) {
-      userFields.push(['Permissions', permissions.join(', ')]);
+    if (auth.user && 'permissions' in auth && auth.permissions) {
+      userFields.push(['Permissions', auth.permissions.join(', ')]);
     }
 
     return userFields;

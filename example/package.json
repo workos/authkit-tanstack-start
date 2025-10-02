@@ -19,7 +19,7 @@
     "@tanstack/react-router": "^1.132.27",
     "@tanstack/react-router-devtools": "^1.132.27",
     "@tanstack/react-start": "^1.132.27",
-    "@workos-inc/node": "^7.70.0",
+    "@workos-inc/node": "file:../../workos-node",
     "@workos/authkit-tanstack-start": "workspace:*",
     "iron-session": "^8.0.4",
     "jose": "^6.0.10",

@@ -33,7 +33,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@workos-inc/node": "^7.70.0",
+    "@workos-inc/node": "file:../workos-node",
     "@workos/authkit-session": "file:../authkit-session"
   },
   "devDependencies": {

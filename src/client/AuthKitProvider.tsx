@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { checkSessionAction, getAuthAction, refreshAuthAction } from '../server/actions.js';
 import { signOut } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
@@ -7,6 +8,7 @@ import type { User, Impersonator } from '../types.js';
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderProps) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [organizationId, setOrganizationId] = useState<string | undefined>(undefined);
@@ -70,35 +72,32 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
     [],
   );
 
-  const handleSignOut = useCallback(async ({ returnTo }: { returnTo?: string } = {}) => {
-    try {
-      await signOut({ data: { returnTo } });
-    } catch (error) {
-      // Server function throws redirect - TanStack Start returns it as Response
-      // We need to extract the redirect URL and navigate manually
-      if (error instanceof Response) {
-        // Check for Location header (standard HTTP redirect)
-        const location = error.headers.get('Location');
-        if (location) {
-          window.location.href = location;
-          return;
-        }
-        // For TanStack redirects, try to parse the response body
-        try {
-          const data = await error.json();
-          if (data?.href) {
-            window.location.href = data.href;
+  const handleSignOut = useCallback(
+    async ({ returnTo }: { returnTo?: string } = {}) => {
+      try {
+        await signOut({ data: { returnTo } });
+      } catch (error) {
+        // Server function throws redirect - extract URL and navigate appropriately
+        if (error instanceof Response) {
+          const location = error.headers.get('Location');
+          if (location) {
+            // Check if external URL (WorkOS logout) or internal route
+            const isExternal = location.startsWith('http') && !location.includes(window.location.host);
+            if (isExternal) {
+              // External OAuth/logout URL requires full page navigation
+              window.location.href = location;
+            } else {
+              // Internal routes use TanStack Router navigation
+              navigate({ to: location });
+            }
             return;
           }
-        } catch {
-          // If JSON parsing fails, just reload
-          window.location.href = returnTo || '/';
-          return;
         }
+        throw error;
       }
-      throw error;
-    }
-  }, []);
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     getAuth();

@@ -18,6 +18,7 @@ function RouteComponent() {
     entitlements,
     featureFlags,
     impersonator,
+    signOut,
   } = useAuth();
   const { accessToken, loading: tokenLoading, error: tokenError, refresh, getAccessToken } = useAccessToken();
 
@@ -35,6 +36,16 @@ function RouteComponent() {
       console.log('Fresh token:', token);
     } catch (err) {
       console.error('Get fresh token failed:', err);
+    }
+  };
+
+  const handleClientSignOut = async () => {
+    console.log('🧪 Testing client-side signOut() from useAuth()...');
+    try {
+      await signOut({ returnTo: '/' });
+      console.log('✅ signOut() completed');
+    } catch (err) {
+      console.error('❌ signOut() failed:', err);
     }
   };
 
@@ -236,10 +247,28 @@ function RouteComponent() {
         </Flex>
       </Flex>
 
-      <Flex justify="center" mt="4">
-        <Button asChild color="red" variant="soft">
-          <Link to="/logout">Sign Out</Link>
-        </Button>
+      <Flex direction="column" gap="3">
+        <Heading size="5">Sign Out Methods</Heading>
+        <Text size="2" color="gray">
+          Test different sign out approaches. Check the browser console for logs.
+        </Text>
+        <Flex gap="2" wrap="wrap">
+          <Button onClick={handleClientSignOut} color="red">
+            Sign Out (Client-Side useAuth)
+          </Button>
+          <Button asChild color="red" variant="soft">
+            <Link to="/logout">Sign Out (Route Loader)</Link>
+          </Button>
+        </Flex>
+        <Callout.Root color="blue">
+          <Callout.Text>
+            <strong>Client-Side useAuth:</strong> Calls <Code>signOut()</Code> from the provider context. This tests the
+            redirect handling logic we just fixed.
+            <br />
+            <strong>Route Loader:</strong> Uses the <Code>/logout</Code> route which calls the server function directly
+            in a loader.
+          </Callout.Text>
+        </Callout.Root>
       </Flex>
     </Flex>
   );

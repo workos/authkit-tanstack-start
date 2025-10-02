@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@workos-inc/node':
-        specifier: file:../workos-node
-        version: file:../workos-node
       '@workos/authkit-session':
         specifier: file:../authkit-session
         version: file:../authkit-session
@@ -81,9 +78,6 @@ importers:
       '@tanstack/react-start':
         specifier: ^1.132.27
         version: 1.132.27(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(vite@7.1.7(@types/node@20.19.19)(jiti@2.5.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
-      '@workos-inc/node':
-        specifier: file:../../workos-node
-        version: file:../workos-node
       '@workos/authkit-tanstack-start':
         specifier: workspace:*
         version: link:..

@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useAccessToken } from './useAccessToken';
 import { useAuth } from './AuthKitProvider';
 import { tokenStore } from './tokenStore';
-import type { User } from '@workos-inc/node';
+import type { User } from '@workos/authkit-session';
 
 vi.mock('./AuthKitProvider');
 vi.mock('./tokenStore', () => ({

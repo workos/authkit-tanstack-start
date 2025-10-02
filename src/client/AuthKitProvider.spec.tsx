@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { AuthKitProvider, useAuth } from './AuthKitProvider';
-import type { User } from '@workos-inc/node';
+import type { User } from '@workos/authkit-session';
 
 vi.mock('../server/actions', () => ({
   getAuthAction: vi.fn(),

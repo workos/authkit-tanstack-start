@@ -1,5 +1,3 @@
-'use server';
-
 import { authkit } from './authkit.js';
 import { redirect } from '@tanstack/react-router';
 

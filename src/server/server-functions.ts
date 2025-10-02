@@ -1,9 +1,9 @@
-import { createServerFn } from '@tanstack/react-start';
+import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { redirect } from '@tanstack/react-router';
 import { authkit } from './authkit.js';
 import { getConfig } from '@workos/authkit-session';
-import type { User, Impersonator } from '@workos-inc/node';
+import type { User, Impersonator } from '../types.js';
 
 // Type exports
 export interface GetAuthURLOptions {
@@ -43,8 +43,7 @@ export interface NoUserInfo {
 export const signOut = createServerFn({ method: 'POST' })
   .inputValidator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }) => {
-    const request = getRequest();
-    const auth = await authkit.withAuth(request);
+    const auth = getAuthFromContext();
 
     if (!auth.user || !auth.sessionId) {
       // No session to terminate
@@ -73,7 +72,42 @@ export const signOut = createServerFn({ method: 'POST' })
   });
 
 /**
+ * Internal function to get auth from context (server-only).
+ * Used by other server functions and the public getAuth server function.
+ */
+export function getAuthFromContext(): UserInfo | NoUserInfo {
+  // @ts-expect-error: Untyped internal TanStack Start context
+  const authFn = getGlobalStartContext()?.auth;
+
+  if (!authFn) {
+    throw new Error(
+      'authkitMiddleware not configured. Add authkitMiddleware() to your start.ts requestMiddleware array.',
+    );
+  }
+
+  const auth = authFn();
+
+  if (!auth.user) {
+    return { user: null };
+  }
+
+  return {
+    user: auth.user,
+    sessionId: auth.sessionId!,
+    organizationId: auth.claims?.org_id,
+    role: auth.claims?.role,
+    roles: auth.claims?.roles,
+    permissions: auth.claims?.permissions,
+    entitlements: auth.claims?.entitlements,
+    featureFlags: auth.claims?.feature_flags,
+    impersonator: auth.impersonator,
+    accessToken: auth.accessToken!,
+  };
+}
+
+/**
  * Get authentication context from the current request.
+ * Can be called from route loaders (works during client-side navigation via RPC).
  *
  * @returns The authentication context with user info or null user
  *
@@ -93,26 +127,8 @@ export const signOut = createServerFn({ method: 'POST' })
  * });
  * ```
  */
-export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promise<UserInfo | NoUserInfo> => {
-  const request = getRequest();
-  const auth = await authkit.withAuth(request);
-
-  if (!auth.user) {
-    return { user: null };
-  }
-
-  return {
-    user: auth.user,
-    sessionId: auth.sessionId!,
-    organizationId: auth.claims?.org_id,
-    role: auth.claims?.role,
-    roles: auth.claims?.roles,
-    permissions: auth.claims?.permissions,
-    entitlements: auth.claims?.entitlements,
-    featureFlags: auth.claims?.feature_flags,
-    impersonator: auth.impersonator,
-    accessToken: auth.accessToken!,
-  };
+export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | NoUserInfo => {
+  return getAuthFromContext();
 });
 
 /**

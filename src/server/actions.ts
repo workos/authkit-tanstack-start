@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { authkit } from './authkit.js';
 import type { UserInfo, NoUserInfo } from './server-functions.js';
+import { getAuthFromContext } from './server-functions.js';
 
 /**
  * Server actions for client-side hooks.
@@ -11,9 +12,8 @@ import type { UserInfo, NoUserInfo } from './server-functions.js';
 /**
  * Check if a session exists. Used by client to detect session expiration.
  */
-export const checkSessionAction = createServerFn({ method: 'GET' }).handler(async () => {
-  const request = getRequest();
-  const auth = await authkit.withAuth(request);
+export const checkSessionAction = createServerFn({ method: 'GET' }).handler(() => {
+  const auth = getAuthFromContext();
   return auth.user !== null;
 });
 
@@ -22,9 +22,8 @@ export const checkSessionAction = createServerFn({ method: 'GET' }).handler(asyn
  */
 export const getAuthAction = createServerFn({ method: 'GET' })
   .inputValidator((options?: { ensureSignedIn?: boolean }) => options)
-  .handler(async ({ data: options }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
-    const request = getRequest();
-    const auth = await authkit.withAuth(request);
+  .handler(({ data: options }): Omit<UserInfo, 'accessToken'> | NoUserInfo => {
+    const auth = getAuthFromContext();
 
     if (!auth.user) {
       return { user: null };
@@ -32,13 +31,13 @@ export const getAuthAction = createServerFn({ method: 'GET' })
 
     return {
       user: auth.user,
-      sessionId: auth.sessionId!,
-      organizationId: auth.claims?.org_id,
-      role: auth.claims?.role,
-      roles: auth.claims?.roles,
-      permissions: auth.claims?.permissions,
-      entitlements: auth.claims?.entitlements,
-      featureFlags: auth.claims?.feature_flags,
+      sessionId: auth.sessionId,
+      organizationId: auth.organizationId,
+      role: auth.role,
+      roles: auth.roles,
+      permissions: auth.permissions,
+      entitlements: auth.entitlements,
+      featureFlags: auth.featureFlags,
       impersonator: auth.impersonator,
     };
   });
@@ -49,19 +48,26 @@ export const getAuthAction = createServerFn({ method: 'GET' })
 export const refreshAuthAction = createServerFn({ method: 'POST' })
   .inputValidator((options?: { ensureSignedIn?: boolean; organizationId?: string }) => options)
   .handler(async ({ data: options }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
-    const request = getRequest();
-    const session = await authkit.withAuth(request);
+    const auth = getAuthFromContext();
 
-    if (!session.user || !session.accessToken || !session.refreshToken) {
+    if (!auth.user || !auth.accessToken || !auth.sessionId) {
+      return { user: null };
+    }
+
+    // Get refresh token from request since it's not in the auth result
+    const request = getRequest();
+    const session = await authkit.getSession(request);
+
+    if (!session || !session.refreshToken) {
       return { user: null };
     }
 
     const result = await authkit.refreshSession(
       {
-        accessToken: session.accessToken,
+        accessToken: auth.accessToken,
         refreshToken: session.refreshToken,
-        user: session.user,
-        impersonator: session.impersonator,
+        user: auth.user,
+        impersonator: auth.impersonator,
       },
       options?.organizationId,
     );
@@ -86,10 +92,9 @@ export const refreshAuthAction = createServerFn({ method: 'POST' })
 /**
  * Get access token for the current session.
  */
-export const getAccessTokenAction = createServerFn({ method: 'GET' }).handler(async (): Promise<string | undefined> => {
-  const request = getRequest();
-  const auth = await authkit.withAuth(request);
-  return auth.accessToken;
+export const getAccessTokenAction = createServerFn({ method: 'GET' }).handler((): string | undefined => {
+  const auth = getAuthFromContext();
+  return auth.user ? auth.accessToken : undefined;
 });
 
 /**
@@ -97,18 +102,25 @@ export const getAccessTokenAction = createServerFn({ method: 'GET' }).handler(as
  */
 export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handler(
   async (): Promise<string | undefined> => {
-    const request = getRequest();
-    const session = await authkit.withAuth(request);
+    const auth = getAuthFromContext();
 
-    if (!session.user || !session.accessToken || !session.refreshToken) {
+    if (!auth.user || !auth.accessToken) {
+      return undefined;
+    }
+
+    // Get refresh token from request since it's not in the auth result
+    const request = getRequest();
+    const session = await authkit.getSession(request);
+
+    if (!session || !session.refreshToken) {
       return undefined;
     }
 
     const result = await authkit.refreshSession({
-      accessToken: session.accessToken,
+      accessToken: auth.accessToken,
       refreshToken: session.refreshToken,
-      user: session.user,
-      impersonator: session.impersonator,
+      user: auth.user,
+      impersonator: auth.impersonator,
     });
     return result.accessToken;
   },

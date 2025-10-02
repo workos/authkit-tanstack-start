@@ -1,4 +1,4 @@
-import type { User, Impersonator } from '@workos-inc/node';
+import type { User, Impersonator } from '../types.js';
 
 export interface AuthContextType {
   user: User | null;

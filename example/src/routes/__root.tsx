@@ -10,11 +10,6 @@ import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
-  beforeLoad: async () => {
-    // Pass user to child routes via context
-    const { user } = await getAuth();
-    return { user };
-  },
   head: () => ({
     meta: [
       {
@@ -30,10 +25,12 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: 'stylesheet', href: appCssUrl }],
   }),
-  loader: async ({ context }) => {
+  loader: async () => {
+    // getAuth() is a server function - works during client-side navigation
+    const { user } = await getAuth();
     const url = await getSignInUrl({});
     return {
-      user: context.user,
+      user,
       url,
     };
   },

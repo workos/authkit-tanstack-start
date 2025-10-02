@@ -124,11 +124,15 @@ export async function handleCallbackRoute({ request }: { request: Request }): Pr
       },
     });
   } catch (error) {
+    // Log the actual error for debugging
+    console.error('OAuth callback failed:', error);
+
     return new Response(
       JSON.stringify({
         error: {
           message: 'Authentication failed',
           description: "Couldn't sign in. Please contact your organization admin if the issue persists.",
+          details: error instanceof Error ? error.message : String(error),
         },
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
@@ -183,3 +187,6 @@ function extractSessionHeaders(response: any): Record<string, string> {
 
   return headers;
 }
+
+// Export middleware for TanStack Start v1.0
+export { authkitMiddleware } from './middleware.js';

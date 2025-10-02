@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { checkSessionAction, getAuthAction, refreshAuthAction } from '../server/actions.js';
 import { signOut } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
-import type { User, Impersonator } from '@workos-inc/node';
+import type { User, Impersonator } from '../types.js';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

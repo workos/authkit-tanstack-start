@@ -1736,8 +1736,8 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
-  '@workos-inc/node@file:../workos-node':
-    resolution: {directory: ../workos-node, type: directory}
+  '@workos-inc/node@8.0.0-beta.4':
+    resolution: {integrity: sha512-eJBfCXiMxbXYHdb67ecZHQUSa/9Ocnjoj/JE2t+DEmuIMEXc1fC3S8j67XMPvYVmTW8/G6gxWQEkwUeL/hU7QQ==}
     engines: {node: '>=18'}
 
   '@workos/authkit-session@file:../authkit-session':
@@ -4836,7 +4836,7 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@workos-inc/node@file:../workos-node':
+  '@workos-inc/node@8.0.0-beta.4':
     dependencies:
       iron-session: 8.0.4
       jose: 5.6.3
@@ -4846,7 +4846,7 @@ snapshots:
 
   '@workos/authkit-session@file:../authkit-session':
     dependencies:
-      '@workos-inc/node': file:../workos-node
+      '@workos-inc/node': 8.0.0-beta.4
       iron-session: 8.0.4
       iron-webcrypto: 1.2.1
       jose: 6.1.0

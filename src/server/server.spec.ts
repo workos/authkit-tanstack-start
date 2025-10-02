@@ -15,55 +15,8 @@ vi.mock('@tanstack/react-router', () => ({
   }),
 }));
 
-import { createWorkOSHandler, handleCallbackRoute, requireAuth } from './server';
+import { handleCallbackRoute } from './server';
 import { authkit } from './authkit';
-
-describe('createWorkOSHandler', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('attaches auth context to request', async () => {
-    const mockAuth = { user: { id: 'user_123' } };
-    (authkit.withAuth as any).mockResolvedValue(mockAuth);
-
-    const mockHandler = vi.fn(() => new Response('OK'));
-    const wrappedHandler = createWorkOSHandler(mockHandler);
-
-    const request = new Request('http://example.com');
-    const ctx = { request, router: {}, responseHeaders: new Headers() };
-
-    await wrappedHandler(ctx);
-
-    expect(mockHandler).toHaveBeenCalled();
-    expect((request as any).authContext).toEqual(mockAuth);
-  });
-});
-
-describe('requireAuth', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('allows authenticated users', async () => {
-    const context = { user: { id: 'user_123' } };
-    const location = new URL('http://example.com/protected');
-
-    // Should not throw
-    await expect(requireAuth({ context, location: location as any })).resolves.toBeUndefined();
-  });
-
-  it('redirects unauthenticated users', async () => {
-    const context = { user: null };
-    const location = new URL('http://example.com/protected');
-    (authkit.getSignInUrl as any).mockResolvedValue('http://auth.example.com/sign-in');
-
-    await expect(requireAuth({ context, location: location as any })).rejects.toThrow(/Redirect/);
-    expect(authkit.getSignInUrl).toHaveBeenCalledWith({
-      redirectUri: 'http://example.com/api/auth/callback',
-    });
-  });
-});
 
 describe('handleCallbackRoute', () => {
   beforeEach(() => {

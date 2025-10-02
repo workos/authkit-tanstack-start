@@ -31,14 +31,10 @@ describe('Integration tests', () => {
   it('server utilities are properly structured', async () => {
     const server = await import('../src/server/server');
 
-    expect(server.createWorkOSHandler).toBeDefined();
     expect(server.handleCallbackRoute).toBeDefined();
-    expect(server.requireAuth).toBeDefined();
 
     // Verify they're functions
-    expect(typeof server.createWorkOSHandler).toBe('function');
     expect(typeof server.handleCallbackRoute).toBe('function');
-    expect(typeof server.requireAuth).toBe('function');
   });
 
   it('storage class is properly structured', async () => {

@@ -12,10 +12,8 @@ describe('SDK exports', () => {
     expect(exports.getSignUpUrl).toBeDefined();
     expect(exports.handleCallback).toBeDefined();
 
-    // Server utilities
-    expect(exports.createWorkOSHandler).toBeDefined();
-    expect(exports.handleCallbackRoute).toBeDefined();
-    expect(exports.requireAuth).toBeDefined();
+    // Middleware
+    expect(exports.authkitMiddleware).toBeDefined();
   });
 
   it('exports expected types', () => {
@@ -28,9 +26,7 @@ describe('SDK exports', () => {
       'getSignInUrl',
       'getSignUpUrl',
       'handleCallback',
-      'createWorkOSHandler',
-      'handleCallbackRoute',
-      'requireAuth',
+      'authkitMiddleware',
     ];
 
     typeExports.forEach((exportName) => {

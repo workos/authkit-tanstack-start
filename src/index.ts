@@ -23,7 +23,7 @@ export {
 } from './server/server-functions.js';
 
 // Server utilities for route handlers
-export { createWorkOSHandler, handleCallbackRoute, requireAuth } from './server/server.js';
+export { handleCallbackRoute } from './server/server.js';
 
 // Middleware for TanStack Start v1.0
 export { authkitMiddleware } from './server/middleware.js';

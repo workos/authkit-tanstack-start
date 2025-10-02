@@ -313,79 +313,6 @@ describe('Server Functions', () => {
     });
   });
 
-  describe('handleCallback', () => {
-    it('handles successful OAuth callback', async () => {
-      const mockUser = { id: 'user_123', email: 'test@example.com' };
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.handleCallback as any).mockResolvedValue({
-        authResponse: {
-          user: mockUser,
-          accessToken: 'access_123',
-        },
-      });
-
-      const result = await serverFunctions.handleCallback({
-        data: { code: 'auth_code_123' },
-      });
-
-      expect(result).toEqual({
-        success: true,
-        returnPathname: '/',
-        user: mockUser,
-        accessToken: 'access_123',
-      });
-    });
-
-    it('decodes state for return pathname', async () => {
-      const state = btoa(JSON.stringify({ returnPathname: '/dashboard' }));
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.handleCallback as any).mockResolvedValue({
-        authResponse: { user: { id: 'user_123' } },
-      });
-
-      const result = await serverFunctions.handleCallback({
-        data: { code: 'auth_code', state },
-      });
-
-      expect(result.returnPathname).toBe('/dashboard');
-    });
-
-    it('handles malformed state gracefully', async () => {
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.handleCallback as any).mockResolvedValue({
-        authResponse: { user: { id: 'user_123' } },
-      });
-
-      const result = await serverFunctions.handleCallback({
-        data: { code: 'auth_code', state: 'not-base64!' },
-      });
-
-      expect(result.returnPathname).toBe('/');
-    });
-
-    it('handles undefined auth response', async () => {
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.handleCallback as any).mockResolvedValue({});
-
-      const result = await serverFunctions.handleCallback({
-        data: { code: 'auth_code' },
-      });
-
-      expect(result).toEqual({
-        success: true,
-        returnPathname: '/',
-        user: undefined,
-        accessToken: undefined,
-      });
-    });
-  });
-
-  describe('terminateSession', () => {
-    it('is an alias for signOut', () => {
-      expect(serverFunctions.terminateSession).toBe(serverFunctions.signOut);
-    });
-  });
-
   describe('exported types', () => {
     it('exports all expected functions', () => {
       expect(typeof serverFunctions.getAuth).toBe('function');
@@ -393,8 +320,6 @@ describe('Server Functions', () => {
       expect(typeof serverFunctions.getAuthorizationUrl).toBe('function');
       expect(typeof serverFunctions.getSignInUrl).toBe('function');
       expect(typeof serverFunctions.getSignUpUrl).toBe('function');
-      expect(typeof serverFunctions.handleCallback).toBe('function');
-      expect(typeof serverFunctions.terminateSession).toBe('function');
     });
   });
 });

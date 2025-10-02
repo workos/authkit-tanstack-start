@@ -153,53 +153,57 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
 /**
  * Get the sign-in URL.
  * Convenience wrapper around getAuthorizationUrl with sign-in screen hint.
+ *
+ * @example
+ * ```typescript
+ * // Without return path
+ * const url = await getSignInUrl();
+ *
+ * // With return path
+ * const url = await getSignInUrl({ data: { returnPathname: '/dashboard' } });
+ * ```
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
-  .inputValidator((returnPathname?: string) => returnPathname)
-  .handler(async ({ data: returnPathname }) => {
-    return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-in' } });
+  .inputValidator((data?: string | { returnPathname?: string }) => data)
+  .handler(async ({ data }) => {
+    const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const workos = authkit.getWorkOS();
+
+    return workos.userManagement.getAuthorizationUrl({
+      provider: 'authkit',
+      clientId: getConfig('clientId'),
+      redirectUri: getConfig('redirectUri'),
+      state: returnPathname ? btoa(JSON.stringify({ returnPathname })) : undefined,
+      screenHint: 'sign-in',
+    });
   });
 
 /**
  * Get the sign-up URL.
  * Convenience wrapper around getAuthorizationUrl with sign-up screen hint.
- */
-export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .inputValidator((returnPathname?: string) => returnPathname)
-  .handler(async ({ data: returnPathname }) => {
-    return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-up' } });
-  });
-
-// Alias for backward compatibility
-export const terminateSession = signOut;
-
-/**
- * Handles the OAuth callback from WorkOS.
- * This server function is primarily for programmatic use.
- * For route handlers, use handleCallbackRoute instead.
  *
  * @example
  * ```typescript
- * import { handleCallback } from '@workos/authkit-tanstack-start';
+ * // Without return path
+ * const url = await getSignUpUrl();
  *
- * const result = await handleCallback({ code: 'auth_code_xyz' });
+ * // With return path
+ * const url = await getSignUpUrl({ data: { returnPathname: '/dashboard' } });
  * ```
  */
-export const handleCallback = createServerFn({ method: 'POST' })
-  .inputValidator((data: { code: string; state?: string }) => data)
+export const getSignUpUrl = createServerFn({ method: 'GET' })
+  .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
-    const request = getRequest();
-    const result = await authkit.handleCallback(request, new Response(), data);
+    const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const workos = authkit.getWorkOS();
 
-    // Decode return pathname from state
-    const returnPathname = data.state ? decodeState(data.state) : '/';
-
-    return {
-      success: true,
-      returnPathname,
-      user: result.authResponse?.user,
-      accessToken: result.authResponse?.accessToken,
-    };
+    return workos.userManagement.getAuthorizationUrl({
+      provider: 'authkit',
+      clientId: getConfig('clientId'),
+      redirectUri: getConfig('redirectUri'),
+      state: returnPathname ? btoa(JSON.stringify({ returnPathname })) : undefined,
+      screenHint: 'sign-up',
+    });
   });
 
 // Helper to decode state parameter

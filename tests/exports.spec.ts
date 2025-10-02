@@ -6,11 +6,12 @@ describe('SDK exports', () => {
     // Server functions
     expect(exports.getAuth).toBeDefined();
     expect(exports.signOut).toBeDefined();
-    expect(exports.terminateSession).toBeDefined();
     expect(exports.getAuthorizationUrl).toBeDefined();
     expect(exports.getSignInUrl).toBeDefined();
     expect(exports.getSignUpUrl).toBeDefined();
-    expect(exports.handleCallback).toBeDefined();
+
+    // Route handlers
+    expect(exports.handleCallbackRoute).toBeDefined();
 
     // Middleware
     expect(exports.authkitMiddleware).toBeDefined();
@@ -25,7 +26,7 @@ describe('SDK exports', () => {
       'getAuthorizationUrl',
       'getSignInUrl',
       'getSignUpUrl',
-      'handleCallback',
+      'handleCallbackRoute',
       'authkitMiddleware',
     ];
 

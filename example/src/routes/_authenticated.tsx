@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_authenticated')({
     const { user } = await getAuth();
     if (!user) {
       const path = location.pathname;
-      const href = await getSignInUrl({ data: path });
+      const href = await getSignInUrl({ data: { returnPathname: path } });
       throw redirect({ href });
     }
   },

@@ -13,13 +13,10 @@ export {
   // Authentication functions
   getAuth,
   signOut,
-  terminateSession, // Alias for backward compatibility
   // URL generation
   getAuthorizationUrl,
   getSignInUrl,
   getSignUpUrl,
-  // OAuth callback
-  handleCallback,
 } from './server/server-functions.js';
 
 // Server utilities for route handlers

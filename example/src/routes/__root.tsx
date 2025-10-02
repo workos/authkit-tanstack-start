@@ -28,7 +28,7 @@ export const Route = createRootRoute({
   loader: async () => {
     // getAuth() is a server function - works during client-side navigation
     const { user } = await getAuth();
-    const url = await getSignInUrl({});
+    const url = await getSignInUrl();
     return {
       user,
       url,

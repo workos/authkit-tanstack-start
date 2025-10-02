@@ -24,8 +24,6 @@ describe('Integration tests', () => {
     expect(serverFunctions.getAuthorizationUrl).toBeDefined();
     expect(serverFunctions.getSignInUrl).toBeDefined();
     expect(serverFunctions.getSignUpUrl).toBeDefined();
-    expect(serverFunctions.handleCallback).toBeDefined();
-    expect(serverFunctions.terminateSession).toBeDefined();
   });
 
   it('server utilities are properly structured', async () => {

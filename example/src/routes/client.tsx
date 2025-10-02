@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Badge, Box, Button, Code, Flex, Heading, Text, TextField, Callout } from '@radix-ui/themes';
 import { useAuth, useAccessToken } from '@workos/authkit-tanstack-start/client';
+import { useState } from 'react';
 
 export const Route = createFileRoute('/client')({
   component: RouteComponent,
@@ -19,6 +20,7 @@ function RouteComponent() {
     featureFlags,
     impersonator,
     signOut,
+    switchToOrganization,
   } = useAuth();
   const { accessToken, loading: tokenLoading, error: tokenError, refresh, getAccessToken } = useAccessToken();
 
@@ -46,6 +48,34 @@ function RouteComponent() {
       console.log('✅ signOut() completed');
     } catch (err) {
       console.error('❌ signOut() failed:', err);
+    }
+  };
+
+  const [orgIdInput, setOrgIdInput] = useState('');
+  const [switchOrgResult, setSwitchOrgResult] = useState<string | null>(null);
+
+  const handleSwitchOrg = async () => {
+    if (!orgIdInput.trim()) {
+      setSwitchOrgResult('Please enter an organization ID');
+      return;
+    }
+
+    console.log(`🔄 Switching to organization: ${orgIdInput}...`);
+    setSwitchOrgResult(null);
+
+    try {
+      const result = await switchToOrganization(orgIdInput.trim());
+      if (result && 'error' in result) {
+        console.error('❌ Switch failed:', result.error);
+        setSwitchOrgResult(`Error: ${result.error}`);
+      } else {
+        console.log('✅ Successfully switched organizations');
+        setSwitchOrgResult('✅ Success! Check updated claims above.');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('❌ Switch error:', message);
+      setSwitchOrgResult(`Error: ${message}`);
     }
   };
 
@@ -244,6 +274,48 @@ function RouteComponent() {
               Get Fresh Token (Console)
             </Button>
           </Flex>
+        </Flex>
+      </Flex>
+
+      <Flex direction="column" gap="3">
+        <Heading size="5">Organization Management</Heading>
+        <Text size="2" color="gray">
+          Switch to a different organization. Requires multi-organization setup in WorkOS.
+        </Text>
+        <Callout.Root>
+          <Callout.Text>
+            <strong>Setup required:</strong> This feature requires your WorkOS user to be a member of multiple
+            organizations. Create organizations in the WorkOS dashboard and add your user to them.
+          </Callout.Text>
+        </Callout.Root>
+        <Flex direction="column" gap="2">
+          <Flex align="center" gap="2">
+            <Text weight="bold" style={{ width: 150 }}>
+              Current Org:
+            </Text>
+            <Badge color={organizationId ? 'green' : 'gray'} size="2">
+              {organizationId || 'None'}
+            </Badge>
+          </Flex>
+          <Flex align="center" gap="2">
+            <Text weight="bold" style={{ width: 150 }}>
+              Switch to Org:
+            </Text>
+            <TextField.Root
+              placeholder="org_..."
+              value={orgIdInput}
+              onChange={(e) => setOrgIdInput(e.target.value)}
+              style={{ flexGrow: 1 }}
+            />
+            <Button onClick={handleSwitchOrg} disabled={!orgIdInput.trim()}>
+              Switch
+            </Button>
+          </Flex>
+          {switchOrgResult && (
+            <Callout.Root color={switchOrgResult.startsWith('✅') ? 'green' : 'red'}>
+              <Callout.Text>{switchOrgResult}</Callout.Text>
+            </Callout.Root>
+          )}
         </Flex>
       </Flex>
 

@@ -69,6 +69,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
   });
 
@@ -95,6 +96,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getSnapshot).mockReturnValue({
@@ -134,6 +136,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getSnapshot).mockReturnValue({
@@ -167,6 +170,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     const error = new Error('Token fetch failed');
@@ -201,6 +205,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue('token');
@@ -233,6 +238,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     rerender();
@@ -257,6 +263,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     rerender();
@@ -281,6 +288,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
@@ -314,6 +322,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue(undefined);
@@ -367,6 +376,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     const { rerender } = renderHook(() => useAccessToken());
@@ -391,6 +401,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     rerender();
@@ -415,6 +426,7 @@ describe('useAccessToken', () => {
       getAuth: vi.fn(),
       refreshAuth: vi.fn(),
       signOut: vi.fn(),
+      switchToOrganization: vi.fn(),
     });
 
     vi.mocked(tokenStore.getSnapshot).mockReturnValue({

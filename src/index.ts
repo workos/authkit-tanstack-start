@@ -13,6 +13,7 @@ export {
   // Authentication functions
   getAuth,
   signOut,
+  switchToOrganization,
   // URL generation
   getAuthorizationUrl,
   getSignInUrl,

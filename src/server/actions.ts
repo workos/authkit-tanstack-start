@@ -125,3 +125,49 @@ export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handl
     return result.accessToken;
   },
 );
+
+/**
+ * Switch to a different organization. Sanitized for client use (no access token).
+ */
+export const switchToOrganizationAction = createServerFn({ method: 'POST' })
+  .inputValidator((data: { organizationId: string }) => data)
+  .handler(async ({ data }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
+    const auth = getAuthFromContext();
+
+    if (!auth.user || !auth.accessToken) {
+      return { user: null };
+    }
+
+    const request = getRequest();
+    const session = await authkit.getSession(request);
+
+    if (!session || !session.refreshToken) {
+      return { user: null };
+    }
+
+    const result = await authkit.refreshSession(
+      {
+        accessToken: auth.accessToken,
+        refreshToken: session.refreshToken,
+        user: auth.user,
+        impersonator: auth.impersonator,
+      },
+      data.organizationId,
+    );
+
+    if (!result.user) {
+      return { user: null };
+    }
+
+    return {
+      user: result.user,
+      sessionId: result.sessionId,
+      organizationId: result.organizationId,
+      role: result.role,
+      roles: result.roles,
+      permissions: result.permissions,
+      entitlements: result.entitlements,
+      featureFlags: result.claims?.feature_flags,
+      impersonator: result.impersonator,
+    };
+  });

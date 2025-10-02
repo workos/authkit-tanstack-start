@@ -206,6 +206,67 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
     });
   });
 
+/**
+ * Switch the active organization for the current session.
+ * Refreshes the session with organization-specific claims (role, permissions, etc).
+ *
+ * @param organizationId - The ID of the organization to switch to
+ * @param options - Optional configuration
+ * @returns The updated authentication context with new organization claims
+ *
+ * @example
+ * ```typescript
+ * import { switchToOrganization } from '@workos/authkit-tanstack-start';
+ *
+ * // In a server function or route loader
+ * const auth = await switchToOrganization({
+ *   data: { organizationId: 'org_123' }
+ * });
+ * ```
+ */
+export const switchToOrganization = createServerFn({ method: 'POST' })
+  .inputValidator((data: { organizationId: string; returnTo?: string }) => data)
+  .handler(async ({ data }): Promise<UserInfo> => {
+    const request = getRequest();
+    const auth = getAuthFromContext();
+
+    if (!auth.user || !auth.accessToken) {
+      throw redirect({ to: data.returnTo || '/' });
+    }
+
+    const session = await authkit.getSession(request);
+    if (!session || !session.refreshToken) {
+      throw redirect({ to: data.returnTo || '/' });
+    }
+
+    const result = await authkit.refreshSession(
+      {
+        accessToken: auth.accessToken,
+        refreshToken: session.refreshToken,
+        user: auth.user,
+        impersonator: auth.impersonator,
+      },
+      data.organizationId,
+    );
+
+    if (!result.user) {
+      throw redirect({ to: data.returnTo || '/' });
+    }
+
+    return {
+      user: result.user,
+      sessionId: result.sessionId,
+      organizationId: result.organizationId,
+      role: result.role,
+      roles: result.roles,
+      permissions: result.permissions,
+      entitlements: result.entitlements,
+      featureFlags: result.claims?.feature_flags,
+      impersonator: result.impersonator,
+      accessToken: result.accessToken!,
+    };
+  });
+
 // Helper to decode state parameter
 function decodeState(state: string): string {
   try {

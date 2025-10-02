@@ -21,6 +21,7 @@ describe('Integration tests', () => {
 
     expect(serverFunctions.getAuth).toBeDefined();
     expect(serverFunctions.signOut).toBeDefined();
+    expect(serverFunctions.switchToOrganization).toBeDefined();
     expect(serverFunctions.getAuthorizationUrl).toBeDefined();
     expect(serverFunctions.getSignInUrl).toBeDefined();
     expect(serverFunctions.getSignUpUrl).toBeDefined();

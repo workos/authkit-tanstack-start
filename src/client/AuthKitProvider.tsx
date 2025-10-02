@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { checkSessionAction, getAuthAction, refreshAuthAction } from '../server/actions.js';
+import { checkSessionAction, getAuthAction, refreshAuthAction, switchToOrganizationAction } from '../server/actions.js';
 import { signOut } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
 import type { User, Impersonator } from '../types.js';
@@ -99,6 +99,40 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
     [navigate],
   );
 
+  const handleSwitchToOrganization = useCallback(async (organizationId: string) => {
+    try {
+      setLoading(true);
+      const auth = await switchToOrganizationAction({ data: { organizationId } });
+
+      if (!auth.user) {
+        setUser(null);
+        setSessionId(undefined);
+        setOrganizationId(undefined);
+        setRole(undefined);
+        setRoles(undefined);
+        setPermissions(undefined);
+        setEntitlements(undefined);
+        setFeatureFlags(undefined);
+        setImpersonator(undefined);
+        return;
+      }
+
+      setUser(auth.user);
+      setSessionId(auth.sessionId);
+      setOrganizationId(auth.organizationId);
+      setRole(auth.role);
+      setRoles(auth.roles);
+      setPermissions(auth.permissions);
+      setEntitlements(auth.entitlements);
+      setFeatureFlags(auth.featureFlags);
+      setImpersonator(auth.impersonator);
+    } catch (error) {
+      return error instanceof Error ? { error: error.message } : { error: String(error) };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     getAuth();
 
@@ -160,6 +194,7 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
         getAuth,
         refreshAuth,
         signOut: handleSignOut,
+        switchToOrganization: handleSwitchToOrganization,
       }}
     >
       {children}

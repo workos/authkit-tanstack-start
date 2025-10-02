@@ -14,6 +14,7 @@ export interface AuthContextType {
   getAuth: (options?: { ensureSignedIn?: boolean }) => Promise<void>;
   refreshAuth: (options?: { ensureSignedIn?: boolean; organizationId?: string }) => Promise<void | { error: string }>;
   signOut: (options?: { returnTo?: string }) => Promise<void>;
+  switchToOrganization: (organizationId: string) => Promise<void | { error: string }>;
 }
 
 export interface AuthKitProviderProps {

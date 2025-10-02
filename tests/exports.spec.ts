@@ -6,6 +6,7 @@ describe('SDK exports', () => {
     // Server functions
     expect(exports.getAuth).toBeDefined();
     expect(exports.signOut).toBeDefined();
+    expect(exports.switchToOrganization).toBeDefined();
     expect(exports.getAuthorizationUrl).toBeDefined();
     expect(exports.getSignInUrl).toBeDefined();
     expect(exports.getSignUpUrl).toBeDefined();
@@ -23,6 +24,7 @@ describe('SDK exports', () => {
     const typeExports: Array<keyof typeof exports> = [
       'getAuth',
       'signOut',
+      'switchToOrganization',
       'getAuthorizationUrl',
       'getSignInUrl',
       'getSignUpUrl',

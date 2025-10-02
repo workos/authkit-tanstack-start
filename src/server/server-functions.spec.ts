@@ -32,6 +32,9 @@ vi.mock('@workos/authkit-session', () => ({
   }),
 }));
 
+// Mock global context for middleware pattern
+let mockAuthContext: any = null;
+
 // Mock createServerFn to return testable functions
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (options?: any) => ({
@@ -50,6 +53,9 @@ vi.mock('@tanstack/react-start', () => ({
       };
       return fn;
     },
+  }),
+  getGlobalStartContext: () => ({
+    auth: mockAuthContext,
   }),
 }));
 
@@ -72,8 +78,8 @@ describe('Server Functions', () => {
         lastName: 'User',
       };
 
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.withAuth as any).mockResolvedValue({
+      // Set up mock auth context (what middleware would provide)
+      mockAuthContext = () => ({
         user: mockUser,
         sessionId: 'session_123',
         accessToken: 'access_token',
@@ -104,8 +110,8 @@ describe('Server Functions', () => {
     });
 
     it('returns null user when not authenticated', async () => {
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.withAuth as any).mockResolvedValue({ user: null });
+      // Set up mock auth context with no user
+      mockAuthContext = () => ({ user: null });
 
       const result = await serverFunctions.getAuth();
 
@@ -115,8 +121,8 @@ describe('Server Functions', () => {
 
   describe('signOut', () => {
     it('redirects to home when no session', async () => {
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.withAuth as any).mockResolvedValue({ user: null });
+      // Set up mock auth context with no user
+      mockAuthContext = () => ({ user: null });
 
       try {
         await serverFunctions.signOut({ data: { returnTo: '/home' } });
@@ -130,11 +136,13 @@ describe('Server Functions', () => {
 
     it('clears session and redirects to logout URL', async () => {
       const logoutUrl = 'https://auth.workos.com/logout';
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.withAuth as any).mockResolvedValue({
+
+      // Set up mock auth context with authenticated user
+      mockAuthContext = () => ({
         user: { id: 'user_123' },
         sessionId: 'session_123',
       });
+
       (authkit.getWorkOS as any).mockReturnValue({
         userManagement: {
           getLogoutUrl: vi.fn().mockReturnValue(logoutUrl),
@@ -152,8 +160,8 @@ describe('Server Functions', () => {
     });
 
     it('defaults to root when no returnTo specified', async () => {
-      (getRequest as any).mockReturnValue(new Request('http://test.local'));
-      (authkit.withAuth as any).mockResolvedValue({ user: null });
+      // Set up mock auth context with no user
+      mockAuthContext = () => ({ user: null });
 
       try {
         await serverFunctions.signOut({ data: undefined });

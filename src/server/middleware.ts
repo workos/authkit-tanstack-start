@@ -1,5 +1,9 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { authkit } from './authkit.js';
+import { validateConfiguration } from './validate-config.js';
+
+// Track if we've validated config to avoid redundant checks
+let configValidated = false;
 
 /**
  * AuthKit middleware for TanStack Start.
@@ -20,6 +24,12 @@ import { authkit } from './authkit.js';
  */
 export const authkitMiddleware = () => {
   return createMiddleware().server(async (args) => {
+    // Validate configuration on first request (fails fast with helpful errors)
+    if (!configValidated) {
+      validateConfiguration();
+      configValidated = true;
+    }
+
     // authkit.withAuth handles token validation, refresh, and session decryption
     const authResult = await authkit.withAuth(args.request);
 

@@ -7,10 +7,17 @@ vi.mock('../server/actions', () => ({
   getAuthAction: vi.fn(),
   refreshAuthAction: vi.fn(),
   checkSessionAction: vi.fn(),
+  switchToOrganizationAction: vi.fn(),
 }));
 
 vi.mock('../server/server-functions', () => ({
   signOut: vi.fn(),
+}));
+
+// Mock TanStack Router hooks to avoid warnings
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/' }),
 }));
 
 describe('AuthKitProvider', () => {

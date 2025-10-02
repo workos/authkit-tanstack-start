@@ -111,11 +111,16 @@ describe('handleCallbackRoute', () => {
     const request = new Request('http://example.com/callback?code=invalid');
     (authkit.handleCallback as any).mockRejectedValue(new Error('Invalid code'));
 
+    // Suppress expected error log
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const response = await handleCallbackRoute({ request });
 
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error.message).toBe('Authentication failed');
     expect(body.error.description).toContain("Couldn't sign in");
+
+    consoleErrorSpy.mockRestore();
   });
 });

@@ -76,12 +76,18 @@ export const signOut = createServerFn({ method: 'POST' })
  * Used by other server functions and the public getAuth server function.
  */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
-  // @ts-expect-error: Untyped internal TanStack Start context
+  // @ts-expect-error - TanStack Start's getGlobalStartContext() returns untyped context
   const authFn = getGlobalStartContext()?.auth;
 
   if (!authFn) {
     throw new Error(
-      'authkitMiddleware not configured. Add authkitMiddleware() to your start.ts requestMiddleware array.',
+      'AuthKit middleware is not configured.\n\n' +
+        'Add authkitMiddleware() to your start.ts file:\n\n' +
+        "import { createStart } from '@tanstack/react-start';\n" +
+        "import { authkitMiddleware } from '@workos/authkit-tanstack-start';\n\n" +
+        'export const startInstance = createStart(() => ({\n' +
+        '  requestMiddleware: [authkitMiddleware()],\n' +
+        '}));',
     );
   }
 

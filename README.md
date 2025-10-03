@@ -2,6 +2,7 @@
 
 Authentication and session management for TanStack Start applications using WorkOS AuthKit.
 
+> [!NOTE]
 > This library is designed for TanStack Start v1.0+. TanStack Start is currently in beta - expect some API changes as the framework evolves.
 
 ## Installation
@@ -12,10 +13,6 @@ npm install @workos/authkit-tanstack-start
 
 ```bash
 pnpm add @workos/authkit-tanstack-start
-```
-
-```bash
-yarn add @workos/authkit-tanstack-start
 ```
 
 ## Quickstart
@@ -39,13 +36,13 @@ openssl rand -base64 24
 
 #### Optional Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `WORKOS_COOKIE_MAX_AGE` | `34560000` (400 days) | Cookie lifetime in seconds |
-| `WORKOS_COOKIE_NAME` | `wos-session` | Session cookie name |
-| `WORKOS_COOKIE_DOMAIN` | None | Cookie domain (for multi-domain sessions) |
-| `WORKOS_COOKIE_SAMESITE` | `lax` | SameSite attribute (`lax`, `strict`, `none`) |
-| `WORKOS_API_HOSTNAME` | `api.workos.com` | WorkOS API hostname |
+| Variable                 | Default               | Description                                  |
+| ------------------------ | --------------------- | -------------------------------------------- |
+| `WORKOS_COOKIE_MAX_AGE`  | `34560000` (400 days) | Cookie lifetime in seconds                   |
+| `WORKOS_COOKIE_NAME`     | `wos-session`         | Session cookie name                          |
+| `WORKOS_COOKIE_DOMAIN`   | None                  | Cookie domain (for multi-domain sessions)    |
+| `WORKOS_COOKIE_SAMESITE` | `lax`                 | SameSite attribute (`lax`, `strict`, `none`) |
+| `WORKOS_API_HOSTNAME`    | `api.workos.com`      | WorkOS API hostname                          |
 
 ### Setup (3 Steps)
 
@@ -198,7 +195,7 @@ import { switchToOrganization } from '@workos/authkit-tanstack-start';
 
 // In a server function or loader
 const auth = await switchToOrganization({
-  data: { organizationId: 'org_456' }
+  data: { organizationId: 'org_456' },
 });
 
 // Session now has org_456's role, permissions, etc.
@@ -228,7 +225,7 @@ export const Route = createFileRoute('/_authenticated')({
 
     if (!user) {
       const signInUrl = await getSignInUrl({
-        data: { returnPathname: location.pathname }
+        data: { returnPathname: location.pathname },
       });
       throw redirect({ href: signInUrl });
     }
@@ -265,6 +262,7 @@ if (user) {
 **Returns:** `UserInfo | NoUserInfo`
 
 **UserInfo fields:**
+
 - `user` - The authenticated user object
 - `sessionId` - WorkOS session ID
 - `organizationId` - Active organization (if in org context)
@@ -286,6 +284,7 @@ await signOut({ data: { returnTo: '/goodbye' } });
 ```
 
 **Options:**
+
 - `returnTo` - Path to redirect to after logout (default: `/`)
 
 #### `switchToOrganization(options)`
@@ -296,12 +295,13 @@ Switches to a different organization and refreshes the session with new claims.
 const auth = await switchToOrganization({
   data: {
     organizationId: 'org_123',
-    returnTo: '/dashboard' // optional
-  }
+    returnTo: '/dashboard', // optional
+  },
 });
 ```
 
 **Options:**
+
 - `organizationId` - The organization ID to switch to (required)
 - `returnTo` - Path to redirect to if auth fails
 
@@ -317,11 +317,12 @@ const url = await getSignInUrl();
 
 // With return path
 const url = await getSignInUrl({
-  data: { returnPathname: '/dashboard' }
+  data: { returnPathname: '/dashboard' },
 });
 ```
 
 **Options:**
+
 - `returnPathname` - Path to return to after sign-in
 
 #### `getSignUpUrl(options?)`
@@ -331,11 +332,12 @@ Generates a sign-up URL for redirecting to AuthKit.
 ```typescript
 const url = await getSignUpUrl();
 const url = await getSignUpUrl({
-  data: { returnPathname: '/onboarding' }
+  data: { returnPathname: '/onboarding' },
 });
 ```
 
 **Options:**
+
 - `returnPathname` - Path to return to after sign-up
 
 #### `getAuthorizationUrl(options)`
@@ -348,11 +350,12 @@ const url = await getAuthorizationUrl({
     screenHint: 'sign-in',
     returnPathname: '/dashboard',
     redirectUri: 'https://example.com/callback', // override default
-  }
+  },
 });
 ```
 
 **Options:**
+
 - `screenHint` - `'sign-in'` or `'sign-up'`
 - `returnPathname` - Return path after authentication
 - `redirectUri` - Override the default redirect URI
@@ -403,9 +406,11 @@ function MyComponent() {
 ```
 
 **Options:**
+
 - `ensureSignedIn?: boolean` - If true, automatically triggers sign-in flow for unauthenticated users
 
 **Returns:** `AuthContextType` with:
+
 - `user` - Current user or null
 - `loading` - Loading state
 - `sessionId`, `organizationId`, `role`, `roles`, `permissions`, `entitlements`, `featureFlags`, `impersonator`
@@ -437,6 +442,7 @@ function ApiCaller() {
 ```
 
 **Returns:**
+
 - `accessToken` - Current token (may be stale)
 - `loading` - Loading state
 - `error` - Last error or null
@@ -576,7 +582,7 @@ export const Route = createFileRoute('/_authenticated')({
 
     if (!user) {
       const signInUrl = await getSignInUrl({
-        data: { returnPathname: location.pathname }
+        data: { returnPathname: location.pathname },
       });
       throw redirect({ href: signInUrl });
     }
@@ -613,14 +619,16 @@ function OrgSwitcher() {
 ### Accessing User in Multiple Places
 
 **Loader (server-side):**
+
 ```typescript
 loader: async () => {
   const { user, organizationId, role } = await getAuth();
   return { user, organizationId, role };
-}
+};
 ```
 
 **Component (from loader data):**
+
 ```typescript
 function MyPage() {
   const { user } = Route.useLoaderData();
@@ -629,6 +637,7 @@ function MyPage() {
 ```
 
 **Client hook (reactive):**
+
 ```typescript
 function MyClientComponent() {
   const { user, loading } = useAuth();
@@ -676,17 +685,19 @@ Don't import client hooks in server code or vice versa.
 You're trying to call a server function from a `beforeLoad` hook or client component.
 
 **Wrong:**
+
 ```typescript
 beforeLoad: async () => {
   const { user } = await getAuth(); // ❌ Runs on client during hydration
-}
+};
 ```
 
 **Right:**
+
 ```typescript
 loader: async () => {
   const { user } = await getAuth(); // ✅ Server-only during SSR
-}
+};
 ```
 
 Use `useAuth()` client hook for client components, or move logic to a loader.
@@ -722,7 +733,6 @@ pnpm dev
 - [WorkOS AuthKit Documentation](https://workos.com/docs/user-management/authkit)
 - [TanStack Start Documentation](https://tanstack.com/start/latest)
 - [WorkOS Node SDK](https://github.com/workos/workos-node)
-- [AuthKit Next.js](https://github.com/workos/authkit-nextjs)
 
 ## License
 

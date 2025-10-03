@@ -8,11 +8,11 @@ Authentication and session management for TanStack Start applications using Work
 ## Installation
 
 ```bash
-npm install @workos/authkit-tanstack-start
+npm install @workos/authkit-tanstack-react-start
 ```
 
 ```bash
-pnpm add @workos/authkit-tanstack-start
+pnpm add @workos/authkit-tanstack-react-start
 ```
 
 ## Quickstart
@@ -52,7 +52,7 @@ Create or update `src/start.ts`:
 
 ```typescript
 import { createStart } from '@tanstack/react-start';
-import { authkitMiddleware } from '@workos/authkit-tanstack-start';
+import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [authkitMiddleware()],
@@ -65,7 +65,7 @@ Create `src/routes/api/auth/callback.tsx`:
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router';
-import { handleCallbackRoute } from '@workos/authkit-tanstack-start';
+import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
@@ -83,7 +83,7 @@ Make sure this matches your `WORKOS_REDIRECT_URI` environment variable.
 If you want to use `useAuth()` or other client hooks, wrap your app with `AuthKitProvider` in `src/routes/__root.tsx`:
 
 ```typescript
-import { AuthKitProvider } from '@workos/authkit-tanstack-start/client';
+import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client';
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 
 export const Route = createRootRoute({
@@ -115,7 +115,7 @@ Use `getAuth()` in route loaders or server functions to access the current sessi
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/dashboard')({
   loader: async () => {
@@ -144,7 +144,7 @@ For client components that need reactive auth state, use the `useAuth()` hook:
 ```typescript
 'use client'; // Not actually needed in TanStack Start, but shows intent
 
-import { useAuth } from '@workos/authkit-tanstack-start/client';
+import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 
 function ProfileButton() {
   const { user, loading, signOut } = useAuth();
@@ -167,7 +167,7 @@ function ProfileButton() {
 **Server-side (in route loader):**
 
 ```typescript
-import { signOut } from '@workos/authkit-tanstack-start';
+import { signOut } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/logout')({
   loader: async () => {
@@ -191,7 +191,7 @@ Switch the active organization for multi-org users:
 **Server-side:**
 
 ```typescript
-import { switchToOrganization } from '@workos/authkit-tanstack-start';
+import { switchToOrganization } from '@workos/authkit-tanstack-react-start';
 
 // In a server function or loader
 const auth = await switchToOrganization({
@@ -217,7 +217,7 @@ Use layout routes to protect multiple pages:
 ```typescript
 // src/routes/_authenticated.tsx
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated')({
   loader: async ({ location }) => {
@@ -368,7 +368,7 @@ Handles the OAuth callback from WorkOS. Use this in your callback route.
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router';
-import { handleCallbackRoute } from '@workos/authkit-tanstack-start';
+import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
@@ -381,14 +381,14 @@ export const Route = createFileRoute('/api/auth/callback')({
 
 ### Client Hooks
 
-Available from `@workos/authkit-tanstack-start/client`. Requires `<AuthKitProvider>` wrapper.
+Available from `@workos/authkit-tanstack-react-start/client`. Requires `<AuthKitProvider>` wrapper.
 
 #### `useAuth(options?)`
 
 Access authentication state and methods in client components.
 
 ```typescript
-import { useAuth } from '@workos/authkit-tanstack-start/client';
+import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 
 function MyComponent() {
   const { user, loading, signOut } = useAuth();
@@ -424,7 +424,7 @@ function MyComponent() {
 Manage access tokens with automatic refresh.
 
 ```typescript
-import { useAccessToken } from '@workos/authkit-tanstack-start/client';
+import { useAccessToken } from '@workos/authkit-tanstack-react-start/client';
 
 function ApiCaller() {
   const { accessToken, loading, getAccessToken } = useAccessToken();
@@ -454,7 +454,7 @@ function ApiCaller() {
 Parse and decode JWT claims from the access token.
 
 ```typescript
-import { useTokenClaims } from '@workos/authkit-tanstack-start/client';
+import { useTokenClaims } from '@workos/authkit-tanstack-react-start/client';
 
 function ClaimsDisplay() {
   const claims = useTokenClaims();
@@ -490,7 +490,7 @@ import type {
   UserInfo,
   NoUserInfo,
   Impersonator
-} from '@workos/authkit-tanstack-start';
+} from '@workos/authkit-tanstack-react-start';
 
 // User object from WorkOS
 const user: User = {
@@ -574,7 +574,7 @@ function HomePage() {
 ```typescript
 // src/routes/_authenticated.tsx
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated')({
   loader: async ({ location }) => {
@@ -599,7 +599,7 @@ export const Route = createFileRoute('/_authenticated')({
 ### Organization Switcher
 
 ```typescript
-import { useAuth } from '@workos/authkit-tanstack-start/client';
+import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 
 function OrgSwitcher() {
   const { organizationId, switchToOrganization } = useAuth();
@@ -672,10 +672,10 @@ Make sure you're importing from the right path:
 
 ```typescript
 // Server functions
-import { getAuth, signOut } from '@workos/authkit-tanstack-start';
+import { getAuth, signOut } from '@workos/authkit-tanstack-react-start';
 
 // Client hooks
-import { useAuth } from '@workos/authkit-tanstack-start/client';
+import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 ```
 
 Don't import client hooks in server code or vice versa.

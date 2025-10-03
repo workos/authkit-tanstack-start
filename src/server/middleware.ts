@@ -1,6 +1,6 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { authkit } from './authkit.js';
-import { validateConfiguration } from './validate-config.js';
+import { validateConfig } from '@workos/authkit-session';
 
 // Track if we've validated config to avoid redundant checks
 let configValidated = false;
@@ -26,7 +26,7 @@ export const authkitMiddleware = () => {
   return createMiddleware().server(async (args) => {
     // Validate configuration on first request (fails fast with helpful errors)
     if (!configValidated) {
-      validateConfiguration();
+      validateConfig();
       configValidated = true;
     }
 

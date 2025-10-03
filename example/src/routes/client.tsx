@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Badge, Box, Button, Code, Flex, Heading, Text, TextField, Callout } from '@radix-ui/themes';
-import { useAuth, useAccessToken } from '@workos/authkit-tanstack-start/client';
+import { useAuth, useAccessToken } from '@workos/authkit-tanstack-react-start/client';
 import { useState } from 'react';
 
 export const Route = createFileRoute('/client')({

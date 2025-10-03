@@ -3,8 +3,8 @@ import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/r
 import appCssUrl from '../app.css?url';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
-import { AuthKitProvider } from '@workos/authkit-tanstack-start/client';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';

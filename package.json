@@ -1,7 +1,7 @@
 {
-  "name": "@workos/authkit-tanstack-start",
+  "name": "@workos/authkit-tanstack-react-start",
   "version": "0.1.0",
-  "description": "WorkOS AuthKit SDK for TanStack Start",
+  "description": "The WorkOS library for TanStack React Start provides convenient helpers for authentication and session management using WorkOS & AuthKit with TanStack React Start.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -36,10 +36,10 @@
     "@workos/authkit-session": "file:../authkit-session"
   },
   "devDependencies": {
-    "@tanstack/react-router": "^1.132.31",
-    "@tanstack/react-router-devtools": "^1.132.31",
-    "@tanstack/react-start": "^1.132.31",
-    "@testing-library/jest-dom": "^6.9.0",
+    "@tanstack/react-router": "^1.132.33",
+    "@tanstack/react-router-devtools": "^1.132.33",
+    "@tanstack/react-start": "^1.132.34",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.0",

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Box, Flex, Heading, Text, TextField } from '@radix-ui/themes';
 import {} from '@tanstack/react-router';
-import { getAuth } from '@workos/authkit-tanstack-start';
+import { getAuth } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated/account')({
   component: RouteComponent,

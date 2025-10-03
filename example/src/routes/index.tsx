@@ -1,6 +1,6 @@
 import { Button, Flex, Heading, Text } from '@radix-ui/themes';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-start';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 import SignInButton from '../components/sign-in-button';
 
 export const Route = createFileRoute('/')({

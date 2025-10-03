@@ -1,6 +1,6 @@
 import { createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
-import type { AuthResult } from '@workos/authkit-tanstack-start';
+import type { AuthResult } from '@workos/authkit-tanstack-react-start';
 
 export function getRouter() {
   const router = createRouter({

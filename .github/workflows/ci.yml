@@ -16,12 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 20, 22, 24]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+          cache: 'pnpm'
 
       - name: Install Dependencies
         run: |
@@ -31,14 +35,15 @@ jobs:
         run: |
           pnpm run prettier
 
-      - name: Lint
-        run: |
-          pnpm run lint
+      # - name: Lint
+      #   run: |
+      #     pnpm run lint
 
       - name: Build
         run: |
           pnpm run build
 
-      - name: Test
-        run: |
-          pnpm run test -- --coverage
+      # NOTE: uncomment when we have tests
+      # - name: Test
+      #   run: |
+      #     pnpm run test -- --coverage

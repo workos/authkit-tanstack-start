@@ -2,7 +2,6 @@ import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { redirect } from '@tanstack/react-router';
 import { authkit } from './authkit.js';
-import { getConfig } from '@workos/authkit-session';
 import type { User, Impersonator } from '../types.js';
 
 // Type exports
@@ -144,16 +143,7 @@ export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | 
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
-    const { returnPathname, screenHint, redirectUri } = options;
-    const workos = authkit.getWorkOS();
-
-    return workos.userManagement.getAuthorizationUrl({
-      provider: 'authkit',
-      clientId: getConfig('clientId'),
-      redirectUri: redirectUri || getConfig('redirectUri'),
-      state: returnPathname ? btoa(JSON.stringify({ returnPathname })) : undefined,
-      screenHint,
-    });
+    return authkit.getAuthorizationUrl(options);
   });
 
 /**
@@ -173,15 +163,7 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
-    const workos = authkit.getWorkOS();
-
-    return workos.userManagement.getAuthorizationUrl({
-      provider: 'authkit',
-      clientId: getConfig('clientId'),
-      redirectUri: getConfig('redirectUri'),
-      state: returnPathname ? btoa(JSON.stringify({ returnPathname })) : undefined,
-      screenHint: 'sign-in',
-    });
+    return authkit.getSignInUrl({ returnPathname });
   });
 
 /**
@@ -201,15 +183,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
-    const workos = authkit.getWorkOS();
-
-    return workos.userManagement.getAuthorizationUrl({
-      provider: 'authkit',
-      clientId: getConfig('clientId'),
-      redirectUri: getConfig('redirectUri'),
-      state: returnPathname ? btoa(JSON.stringify({ returnPathname })) : undefined,
-      screenHint: 'sign-up',
-    });
+    return authkit.getSignUpUrl({ returnPathname });
   });
 
 /**

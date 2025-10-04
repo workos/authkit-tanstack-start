@@ -3,13 +3,10 @@ import { getRequest } from '@tanstack/react-start/server';
 import { redirect } from '@tanstack/react-router';
 import { authkit } from './authkit.js';
 import type { User, Impersonator } from '../types.js';
+import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
 
-// Type exports
-export interface GetAuthURLOptions {
-  redirectUri?: string;
-  screenHint?: 'sign-up' | 'sign-in';
-  returnPathname?: string;
-}
+// Type exports - re-export shared types from authkit-session
+export type { GetAuthURLOptions };
 
 export interface UserInfo {
   user: User;

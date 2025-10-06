@@ -17,11 +17,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
+    "clean": "rm -rf dist",
     "dev": "tsc --watch",
+    "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm run prettier && npm run typecheck && npm test",
     "typecheck": "tsc --noEmit",
     "prettier": "prettier --check .",
     "format": "prettier --write .",
@@ -30,9 +35,33 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "workos",
+    "authkit",
+    "authentication",
+    "auth",
+    "tanstack",
+    "tanstack-start",
+    "react-start",
+    "react",
+    "session",
+    "oauth",
+    "sso"
+  ],
+  "author": "WorkOS",
   "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "homepage": "https://github.com/workos/authkit-tanstack-start#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/workos/authkit-tanstack-start.git"
+  },
+  "bugs": {
+    "url": "https://github.com/workos/authkit-tanstack-start/issues"
+  },
   "dependencies": {
     "@workos/authkit-session": "~0.1.2"
   },

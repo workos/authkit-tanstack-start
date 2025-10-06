@@ -23,6 +23,7 @@
     "dev": "tsc --watch",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "prettier": "prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",

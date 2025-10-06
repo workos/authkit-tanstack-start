@@ -1,5 +1,5 @@
 import { createAuthKitFactory, getConfigurationProvider } from '@workos/authkit-session';
-import { TanStackStartCookieSessionStorage } from './storage';
+import { TanStackStartCookieSessionStorage } from './storage.js';
 
 /**
  * Create the AuthKit instance for TanStack Start

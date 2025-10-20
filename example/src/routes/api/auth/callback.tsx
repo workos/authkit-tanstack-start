@@ -14,13 +14,13 @@ export const Route = createFileRoute('/api/auth/callback')({
             JSON.stringify({
               error: {
                 message: 'Authentication failed',
-                description: "Something went wrong during sign in. Please try again.",
+                description: 'Something went wrong during sign in. Please try again.',
               },
             }),
             {
               status: 500,
               headers: { 'Content-Type': 'application/json' },
-            }
+            },
           );
         },
       }),

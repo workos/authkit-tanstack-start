@@ -29,7 +29,7 @@ vi.mock('@workos/authkit-session', () => ({
     const configs: Record<string, any> = {
       clientId: 'test_client_id',
       redirectUri: 'http://test.local/callback',
-      cookieName: 'wos_session',
+      cookieName: 'wos-session',
     };
     return configs[key];
   }),
@@ -158,7 +158,7 @@ describe('Server Functions', () => {
       } catch (error: any) {
         expect(error.message).toBe('REDIRECT');
         expect(error.options.href).toBe(logoutUrl);
-        expect(error.options.headers['Set-Cookie']).toContain('wos_session=');
+        expect(error.options.headers['Set-Cookie']).toContain('wos-session=');
       }
     });
 

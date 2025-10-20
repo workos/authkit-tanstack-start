@@ -25,7 +25,8 @@ describe('handleCallbackRoute', () => {
 
   it('rejects missing code', async () => {
     const request = new Request('http://example.com/callback');
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -36,9 +37,15 @@ describe('handleCallbackRoute', () => {
     const request = new Request('http://example.com/callback?code=auth_123');
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.status).toBe(307);
     expect(response.headers.get('Location')).toBe('http://example.com/');
@@ -49,9 +56,15 @@ describe('handleCallbackRoute', () => {
     const request = new Request(`http://example.com/callback?code=auth_123&state=${state}`);
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.headers.get('Location')).toBe('http://example.com/dashboard');
   });
@@ -61,9 +74,15 @@ describe('handleCallbackRoute', () => {
     const request = new Request(`http://example.com/callback?code=auth_123&state=${state}`);
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.headers.get('Location')).toBe('http://example.com/search?q=test&page=2');
   });
@@ -72,9 +91,15 @@ describe('handleCallbackRoute', () => {
     const request = new Request('http://example.com/callback?code=auth_123&state=invalid_base64');
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     // Should default to root path
     expect(response.headers.get('Location')).toBe('http://example.com/');
@@ -84,9 +109,15 @@ describe('handleCallbackRoute', () => {
     const request = new Request('http://example.com/callback?code=auth_123&state=null');
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.headers.get('Location')).toBe('http://example.com/');
   });
@@ -99,9 +130,15 @@ describe('handleCallbackRoute', () => {
     ]);
     (authkit.handleCallback as any).mockResolvedValue({
       response: { headers: sessionHeaders },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
     });
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.headers.get('Set-Cookie')).toBe('session=abc123');
     expect(response.headers.get('X-Custom')).toBe('value');
@@ -114,12 +151,125 @@ describe('handleCallbackRoute', () => {
     // Suppress expected error log
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const response = await handleCallbackRoute({ request });
+    const handler = handleCallbackRoute();
+    const response = await handler({ request });
 
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error.message).toBe('Authentication failed');
     expect(body.error.description).toContain("Couldn't sign in");
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('calls onSuccess hook with auth data', async () => {
+    const request = new Request('http://example.com/callback?code=auth_123');
+    const mockAuthResponse = {
+      accessToken: 'access_token_123',
+      refreshToken: 'refresh_token_123',
+      user: { id: 'user_123', email: 'test@example.com', firstName: 'Test', lastName: 'User' },
+      impersonator: { email: 'admin@example.com', reason: 'Support' },
+      oauthTokens: { provider: 'google', accessToken: 'google_token' },
+      authenticationMethod: 'GoogleOAuth',
+      organizationId: 'org_123',
+    };
+
+    (authkit.handleCallback as any).mockResolvedValue({
+      response: { headers: new Map() },
+      authResponse: mockAuthResponse,
+    });
+
+    const onSuccess = vi.fn();
+    const handler = handleCallbackRoute({ onSuccess });
+    await handler({ request });
+
+    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledWith({
+      accessToken: 'access_token_123',
+      refreshToken: 'refresh_token_123',
+      user: mockAuthResponse.user,
+      impersonator: mockAuthResponse.impersonator,
+      oauthTokens: mockAuthResponse.oauthTokens,
+      authenticationMethod: 'GoogleOAuth',
+      organizationId: 'org_123',
+      state: undefined,
+    });
+  });
+
+  it('calls onSuccess with custom state', async () => {
+    const customState = 'custom.user.state';
+    const request = new Request(`http://example.com/callback?code=auth_123&state=${customState}`);
+    (authkit.handleCallback as any).mockResolvedValue({
+      response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
+    });
+
+    const onSuccess = vi.fn();
+    const handler = handleCallbackRoute({ onSuccess });
+    await handler({ request });
+
+    expect(onSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'user.state',
+      }),
+    );
+  });
+
+  it('uses custom returnPathname from options', async () => {
+    const request = new Request('http://example.com/callback?code=auth_123');
+    (authkit.handleCallback as any).mockResolvedValue({
+      response: { headers: new Map() },
+      authResponse: {
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+        user: { id: 'user_123', email: 'test@example.com' },
+      },
+    });
+
+    const handler = handleCallbackRoute({ returnPathname: '/custom-redirect' });
+    const response = await handler({ request });
+
+    expect(response.headers.get('Location')).toBe('http://example.com/custom-redirect');
+  });
+
+  it('calls onError hook on missing code', async () => {
+    const request = new Request('http://example.com/callback');
+    const onError = vi.fn().mockReturnValue(new Response('Custom error', { status: 403 }));
+
+    const handler = handleCallbackRoute({ onError });
+    const response = await handler({ request });
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError).toHaveBeenCalledWith({
+      error: expect.any(Error),
+      request,
+    });
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe('Custom error');
+  });
+
+  it('calls onError hook on callback failure', async () => {
+    const request = new Request('http://example.com/callback?code=invalid');
+    const error = new Error('Auth failed');
+    (authkit.handleCallback as any).mockRejectedValue(error);
+
+    const onError = vi.fn().mockReturnValue(new Response('Custom error page', { status: 500 }));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const handler = handleCallbackRoute({ onError });
+    const response = await handler({ request });
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError).toHaveBeenCalledWith({
+      error,
+      request,
+    });
+    expect(response.status).toBe(500);
+    expect(await response.text()).toBe('Custom error page');
 
     consoleErrorSpy.mockRestore();
   });

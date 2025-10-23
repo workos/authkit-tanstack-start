@@ -22,6 +22,7 @@ export {
 
 // Server utilities for route handlers
 export { handleCallbackRoute } from './server/server.js';
+export type { HandleCallbackOptions, HandleAuthSuccessData } from './server/types.js';
 
 // Middleware for TanStack Start v1.0
 export { authkitMiddleware } from './server/middleware.js';

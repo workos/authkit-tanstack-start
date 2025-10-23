@@ -1,6 +1,7 @@
 import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { redirect } from '@tanstack/react-router';
+import { getConfig } from '@workos/authkit-session';
 import { authkit } from './authkit.js';
 import type { User, Impersonator } from '../types.js';
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
@@ -56,13 +57,16 @@ export const signOut = createServerFn({ method: 'POST' })
       returnTo: data?.returnTo,
     });
 
+    // Get the configured cookie name from authkit
+    const cookieName = getConfig('cookieName');
+
     // Clear session and redirect to WorkOS logout
     throw redirect({
       href: logoutUrl,
       throw: true,
       reloadDocument: true,
       headers: {
-        'Set-Cookie': `wos_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax`,
+        'Set-Cookie': `${cookieName}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax`,
       },
     });
   });

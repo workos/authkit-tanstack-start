@@ -15,6 +15,8 @@ export type { HandleCallbackOptions, HandleAuthSuccessData, OauthTokens } from '
 
 export { authkitMiddleware } from './middleware.js';
 
+export { getAuthkit, type AuthService } from './authkit-loader.js';
+
 export {
   checkSessionAction,
   getAuthAction,

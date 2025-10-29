@@ -70,7 +70,7 @@ import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
     handlers: {
-      GET: handleCallbackRoute,
+      GET: handleCallbackRoute(),
     },
   },
 });
@@ -366,6 +366,8 @@ const url = await getAuthorizationUrl({
 
 Handles the OAuth callback from WorkOS. Use this in your callback route.
 
+**Basic usage:**
+
 ```typescript
 import { createFileRoute } from '@tanstack/react-router';
 import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
@@ -373,11 +375,44 @@ import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
     handlers: {
-      GET: handleCallbackRoute,
+      GET: handleCallbackRoute(),
     },
   },
 });
 ```
+
+**With hooks for custom logic:**
+
+```typescript
+export const Route = createFileRoute('/api/auth/callback')({
+  server: {
+    handlers: {
+      GET: handleCallbackRoute({
+        onSuccess: async ({ user, authenticationMethod }) => {
+          // Create user record in your database
+          await db.users.upsert({ id: user.id, email: user.email });
+          // Track analytics
+          analytics.track('User Signed In', { method: authenticationMethod });
+        },
+        onError: ({ error, request }) => {
+          // Custom error handling
+          console.error('Auth failed:', error);
+          return new Response(JSON.stringify({ error: 'Authentication failed' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        },
+      }),
+    },
+  },
+});
+```
+
+**Options:**
+
+- `onSuccess?: (data) => Promise<void>` - Called after successful authentication with user data, tokens, and authentication method
+- `onError?: ({ error, request }) => Response` - Custom error handler that returns a Response
+- `returnPathname?: string` - Override the redirect path after authentication (defaults to state or `/`)
 
 ### Client Hooks
 

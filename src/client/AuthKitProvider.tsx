@@ -1,38 +1,54 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { checkSessionAction, getAuthAction, refreshAuthAction, switchToOrganizationAction } from '../server/actions.js';
-import { signOut } from '../server/server-functions.js';
+import { ClientUserInfo, NoUserInfo, signOut } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
 import type { User, Impersonator } from '../types.js';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderProps) {
+const getProps = (auth: ClientUserInfo | NoUserInfo | undefined) => {
+  return {
+    user: auth && 'user' in auth ? auth.user : null,
+    sessionId: auth && 'sessionId' in auth ? auth.sessionId : undefined,
+    organizationId: auth && 'organizationId' in auth ? auth.organizationId : undefined,
+    role: auth && 'role' in auth ? auth.role : undefined,
+    roles: auth && 'roles' in auth ? auth.roles : undefined,
+    permissions: auth && 'permissions' in auth ? auth.permissions : undefined,
+    entitlements: auth && 'entitlements' in auth ? auth.entitlements : undefined,
+    featureFlags: auth && 'featureFlags' in auth ? auth.featureFlags : undefined,
+    impersonator: auth && 'impersonator' in auth ? auth.impersonator : undefined,
+  };
+};
+
+export function AuthKitProvider({ children, onSessionExpired, initialAuth }: AuthKitProviderProps) {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
-  const [organizationId, setOrganizationId] = useState<string | undefined>(undefined);
-  const [role, setRole] = useState<string | undefined>(undefined);
-  const [roles, setRoles] = useState<string[] | undefined>(undefined);
-  const [permissions, setPermissions] = useState<string[] | undefined>(undefined);
-  const [entitlements, setEntitlements] = useState<string[] | undefined>(undefined);
-  const [featureFlags, setFeatureFlags] = useState<string[] | undefined>(undefined);
-  const [impersonator, setImpersonator] = useState<Impersonator | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const initialProps = getProps(initialAuth);
+  const [user, setUser] = useState<User | null>(initialProps.user);
+  const [sessionId, setSessionId] = useState<string | undefined>(initialProps.sessionId);
+  const [organizationId, setOrganizationId] = useState<string | undefined>(initialProps.organizationId);
+  const [role, setRole] = useState<string | undefined>(initialProps.role);
+  const [roles, setRoles] = useState<string[] | undefined>(initialProps.roles);
+  const [permissions, setPermissions] = useState<string[] | undefined>(initialProps.permissions);
+  const [entitlements, setEntitlements] = useState<string[] | undefined>(initialProps.entitlements);
+  const [featureFlags, setFeatureFlags] = useState<string[] | undefined>(initialProps.featureFlags);
+  const [impersonator, setImpersonator] = useState<Impersonator | undefined>(initialProps.impersonator);
+  const [loading, setLoading] = useState(initialAuth ? false : true);
 
   const getAuth = useCallback(async ({ ensureSignedIn = false }: { ensureSignedIn?: boolean } = {}) => {
     setLoading(true);
     try {
       const auth = await getAuthAction({ data: { ensureSignedIn } });
-      setUser(auth.user);
-      setSessionId(auth.user ? auth.sessionId : undefined);
-      setOrganizationId('organizationId' in auth ? auth.organizationId : undefined);
-      setRole('role' in auth ? auth.role : undefined);
-      setRoles('roles' in auth ? auth.roles : undefined);
-      setPermissions('permissions' in auth ? auth.permissions : undefined);
-      setEntitlements('entitlements' in auth ? auth.entitlements : undefined);
-      setFeatureFlags('featureFlags' in auth ? auth.featureFlags : undefined);
-      setImpersonator('impersonator' in auth ? auth.impersonator : undefined);
+      const props = getProps(auth);
+      setUser(props.user);
+      setSessionId(props.sessionId);
+      setOrganizationId(props.organizationId);
+      setRole(props.role);
+      setRoles(props.roles);
+      setPermissions(props.permissions);
+      setEntitlements(props.entitlements);
+      setFeatureFlags(props.featureFlags);
+      setImpersonator(props.impersonator);
     } catch (error) {
       setUser(null);
       setSessionId(undefined);
@@ -53,16 +69,16 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
       try {
         setLoading(true);
         const auth = await refreshAuthAction({ data: { ensureSignedIn, organizationId } });
-
-        setUser(auth.user);
-        setSessionId(auth.user ? auth.sessionId : undefined);
-        setOrganizationId('organizationId' in auth ? auth.organizationId : undefined);
-        setRole('role' in auth ? auth.role : undefined);
-        setRoles('roles' in auth ? auth.roles : undefined);
-        setPermissions('permissions' in auth ? auth.permissions : undefined);
-        setEntitlements('entitlements' in auth ? auth.entitlements : undefined);
-        setFeatureFlags('featureFlags' in auth ? auth.featureFlags : undefined);
-        setImpersonator('impersonator' in auth ? auth.impersonator : undefined);
+        const props = getProps(auth);
+        setUser(props.user);
+        setSessionId(props.sessionId);
+        setOrganizationId(props.organizationId);
+        setRole(props.role);
+        setRoles(props.roles);
+        setPermissions(props.permissions);
+        setEntitlements(props.entitlements);
+        setFeatureFlags(props.featureFlags);
+        setImpersonator(props.impersonator);
       } catch (error) {
         return error instanceof Error ? { error: error.message } : { error: String(error) };
       } finally {

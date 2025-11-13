@@ -1,4 +1,5 @@
 import { CookieSessionStorage } from '@workos/authkit-session';
+import { setResponseHeaders } from '@tanstack/react-start/server';
 
 /**
  * TanStack Start compatible CookieSessionStorage implementation for WorkOS AuthKit.
@@ -30,6 +31,13 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     Object.entries(headers).forEach(([key, value]) => {
       newResponse.headers.append(key, value);
     });
+
+    // Also set headers globally for TanStack Start SSR
+    const headersObject = new Headers();
+    Object.entries(headers).forEach(([key, value]) => {
+      headersObject.append(key, value);
+    });
+    setResponseHeaders(headersObject);
 
     return { response: newResponse };
   }

@@ -33,17 +33,38 @@ export const authkitMiddleware = () => {
     // authkit.withAuth handles token validation, refresh, and session decryption
     const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
 
-    // If session was refreshed, save the new session data to the cookie
-    if (refreshedSessionData) {
-      console.log('[middleware] ✅ Session was refreshed, saving to cookie');
-      await authkit.saveSession(undefined, refreshedSessionData);
-    }
-
-    // Store auth result in global context for routes and server functions to access
-    return args.next({
+    // Get result from next() - this calls the next middleware/handler
+    const result = await args.next({
       context: {
         auth: () => auth,
       },
     });
+
+    // If session was refreshed, apply Set-Cookie header to the HTTP response
+    if (refreshedSessionData) {
+      console.log('[middleware] ✅ Session was refreshed, persisting to cookie');
+
+      // Get the properly formatted Set-Cookie header from storage
+      const { headers } = await authkit.saveSession(undefined, refreshedSessionData);
+
+      if (headers?.['Set-Cookie']) {
+        // Clone the response (Response objects are immutable)
+        const newResponse = new Response(result.response.body, {
+          status: result.response.status,
+          statusText: result.response.statusText,
+          headers: result.response.headers,
+        });
+
+        // Apply the Set-Cookie header to the HTTP response
+        newResponse.headers.set('Set-Cookie', headers['Set-Cookie'] as string);
+
+        return {
+          ...result,
+          response: newResponse,
+        };
+      }
+    }
+
+    return result;
   });
 };

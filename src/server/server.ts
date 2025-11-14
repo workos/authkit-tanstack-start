@@ -1,4 +1,4 @@
-import { authkit } from './authkit.js';
+import { getAuthkit } from './authkit-loader.js';
 import type { HandleCallbackOptions } from './types.js';
 
 /**
@@ -72,7 +72,9 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
 
     // Handle OAuth callback
     const response = new Response();
+    const authkit = await getAuthkit();
     const result = await authkit.handleCallback(request, response, { code, state: state ?? undefined });
+
 
     // Extract auth response data
     const { authResponse } = result;
@@ -95,7 +97,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
     const redirectUrl = buildRedirectUrl(url, returnPathname);
 
     // Extract session headers from the result
-    const sessionHeaders = extractSessionHeaders(result.response);
+    const sessionHeaders = extractSessionHeaders(result);
 
     return new Response(null, {
       status: 307,
@@ -185,16 +187,20 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
-function extractSessionHeaders(response: any): Record<string, string> {
-  const headers: Record<string, string> = {};
-
-  // Handle nested response structure from authkit
-  const targetResponse = response?.response || response;
-  if (targetResponse?.headers) {
-    targetResponse.headers.forEach((value: string, key: string) => {
-      headers[key] = value;
-    });
+function extractSessionHeaders(result: any): Record<string, string> {
+  // AuthService returns { response, headers, returnPathname, authResponse }
+  // The session cookie is set on the response object
+  if (result?.response?.headers) {
+    const setCookie = result.response.headers.get('Set-Cookie');
+    if (setCookie) {
+      return { 'Set-Cookie': setCookie };
+    }
   }
 
-  return headers;
+  // Fallback to result.headers if it exists
+  if (result?.headers && typeof result.headers === 'object') {
+    return result.headers;
+  }
+
+  return {};
 }

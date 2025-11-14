@@ -124,12 +124,11 @@ describe('handleCallbackRoute', () => {
 
   it('extracts session headers from response', async () => {
     const request = new Request('http://example.com/callback?code=auth_123');
-    const sessionHeaders = new Map([
-      ['Set-Cookie', 'session=abc123'],
-      ['X-Custom', 'value'],
-    ]);
     (authkit.handleCallback as any).mockResolvedValue({
-      response: { headers: sessionHeaders },
+      headers: {
+        'Set-Cookie': 'session=abc123',
+        'X-Custom': 'value',
+      },
       authResponse: {
         accessToken: 'access_token',
         refreshToken: 'refresh_token',

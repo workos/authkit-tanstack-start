@@ -1,6 +1,5 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { authkit } from './authkit.js';
-import { validateConfig } from '@workos/authkit-session';
+import { getAuthkit } from './authkit-loader.js';
 
 // Track if we've validated config to avoid redundant checks
 let configValidated = false;
@@ -24,8 +23,12 @@ let configValidated = false;
  */
 export const authkitMiddleware = () => {
   return createMiddleware().server(async (args) => {
+    // Get authkit instance (lazy loaded on first request)
+    const authkit = await getAuthkit();
+
     // Validate configuration on first request (fails fast with helpful errors)
     if (!configValidated) {
+      const { validateConfig } = await import('@workos/authkit-session');
       validateConfig();
       configValidated = true;
     }
@@ -42,8 +45,6 @@ export const authkitMiddleware = () => {
 
     // If session was refreshed, apply Set-Cookie header to the HTTP response
     if (refreshedSessionData) {
-      console.log('[middleware] ✅ Session was refreshed, persisting to cookie');
-
       // Get the properly formatted Set-Cookie header from storage
       const { headers } = await authkit.saveSession(undefined, refreshedSessionData);
 

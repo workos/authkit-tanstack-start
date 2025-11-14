@@ -29,3 +29,14 @@ export { authkitMiddleware } from './server/middleware.js';
 
 // Re-export commonly used types from local definitions (prevents client bundling issues)
 export type { User, Impersonator, Session, AuthResult, BaseTokenClaims, CustomClaims } from './types.js';
+
+// Export server actions for client-side hooks
+// These are transformed by TanStack Start into RPC calls
+export {
+  checkSessionAction,
+  getAuthAction,
+  refreshAuthAction,
+  switchToOrganizationAction,
+  getAccessTokenAction,
+  refreshAccessTokenAction,
+} from './server/actions.js';

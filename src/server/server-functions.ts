@@ -1,9 +1,10 @@
 import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { redirect } from '@tanstack/react-router';
-import { getConfig } from '@workos/authkit-session';
-import { authkit } from './authkit.js';
+import { getAuthkit } from './authkit-loader.js';
 import type { User, Impersonator } from '../types.js';
+
+// Type-only import - safe for bundling
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
 
 // Type exports - re-export shared types from authkit-session
@@ -51,6 +52,10 @@ export const signOut = createServerFn({ method: 'POST' })
       });
     }
 
+    // Dynamically import getConfig and authkit only when needed
+    const authkit = await getAuthkit();
+    const { getConfig } = await import('@workos/authkit-session');
+
     const workos = authkit.getWorkOS();
     const logoutUrl = workos.userManagement.getLogoutUrl({
       sessionId: auth.sessionId,
@@ -76,8 +81,12 @@ export const signOut = createServerFn({ method: 'POST' })
  * Used by other server functions and the public getAuth server function.
  */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
-  // @ts-expect-error - TanStack Start's getGlobalStartContext() returns untyped context
-  const authFn = getGlobalStartContext()?.auth;
+  console.log('[getAuthFromContext] Getting global context...');
+  const globalContext = getGlobalStartContext() as any;
+  console.log('[getAuthFromContext] Global context keys:', globalContext ? Object.keys(globalContext) : 'null');
+
+  const authFn = globalContext?.auth;
+  console.log('[getAuthFromContext] Auth function exists?', !!authFn);
 
   if (!authFn) {
     throw new Error(
@@ -92,6 +101,7 @@ export function getAuthFromContext(): UserInfo | NoUserInfo {
   }
 
   const auth = authFn();
+  console.log('[getAuthFromContext] Auth result:', auth?.user?.email || 'no user');
 
   if (!auth.user) {
     return { user: null };
@@ -144,6 +154,7 @@ export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | 
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
+    const authkit = await getAuthkit();
     return authkit.getAuthorizationUrl(options);
   });
 
@@ -164,6 +175,7 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const authkit = await getAuthkit();
     return authkit.getSignInUrl({ returnPathname });
   });
 
@@ -184,6 +196,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const authkit = await getAuthkit();
     return authkit.getSignUpUrl({ returnPathname });
   });
 
@@ -215,12 +228,13 @@ export const switchToOrganization = createServerFn({ method: 'POST' })
       throw redirect({ to: data.returnTo || '/' });
     }
 
+    const authkit = await getAuthkit();
     const session = await authkit.getSession(request);
     if (!session || !session.refreshToken) {
       throw redirect({ to: data.returnTo || '/' });
     }
 
-    const result = await authkit.refreshSession(
+    const { auth: result, encryptedSession } = await authkit.refreshSession(
       {
         accessToken: auth.accessToken,
         refreshToken: session.refreshToken,
@@ -234,17 +248,20 @@ export const switchToOrganization = createServerFn({ method: 'POST' })
       throw redirect({ to: data.returnTo || '/' });
     }
 
+    // Persist the refreshed session
+    await authkit.saveSession(undefined, encryptedSession);
+
     return {
       user: result.user,
       sessionId: result.sessionId,
-      organizationId: result.organizationId,
-      role: result.role,
-      roles: result.roles,
-      permissions: result.permissions,
-      entitlements: result.entitlements,
+      organizationId: result.claims?.org_id,
+      role: result.claims?.role,
+      roles: result.claims?.roles,
+      permissions: result.claims?.permissions,
+      entitlements: result.claims?.entitlements,
       featureFlags: result.claims?.feature_flags,
       impersonator: result.impersonator,
-      accessToken: result.accessToken!,
+      accessToken: result.accessToken,
     };
   });
 

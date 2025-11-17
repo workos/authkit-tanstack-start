@@ -1,7 +1,7 @@
-import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
+import { createServerFn } from '@tanstack/react-start';
 import { redirect } from '@tanstack/react-router';
-import { getAuthkit } from './authkit-loader.js';
+import { getAuthkit, getConfig } from './authkit-loader.js';
+import { getRawAuthFromContext, getSessionWithRefreshToken, refreshSession } from './auth-helpers.js';
 import type { User, Impersonator } from '../types.js';
 
 // Type-only import - safe for bundling
@@ -52,18 +52,15 @@ export const signOut = createServerFn({ method: 'POST' })
       });
     }
 
-    // Dynamically import getConfig and authkit only when needed
+    // Get authkit instance (lazy loaded)
     const authkit = await getAuthkit();
-    const { getConfig } = await import('@workos/authkit-session');
 
-    const workos = authkit.getWorkOS();
-    const logoutUrl = workos.userManagement.getLogoutUrl({
-      sessionId: auth.sessionId,
-      returnTo: data?.returnTo,
-    });
-
-    // Get the configured cookie name from authkit
-    const cookieName = getConfig('cookieName');
+    // Use AuthOperations for sign out logic
+    // This handles logout URL generation and cookie clear header building
+    const { logoutUrl, clearCookieHeader } = await authkit.signOut(
+      auth.sessionId,
+      { returnTo: data?.returnTo },
+    );
 
     // Clear session and redirect to WorkOS logout
     throw redirect({
@@ -71,7 +68,7 @@ export const signOut = createServerFn({ method: 'POST' })
       throw: true,
       reloadDocument: true,
       headers: {
-        'Set-Cookie': `${cookieName}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax`,
+        'Set-Cookie': clearCookieHeader,
       },
     });
   });
@@ -82,25 +79,7 @@ export const signOut = createServerFn({ method: 'POST' })
  */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
   console.log('[getAuthFromContext] Getting global context...');
-  const globalContext = getGlobalStartContext() as any;
-  console.log('[getAuthFromContext] Global context keys:', globalContext ? Object.keys(globalContext) : 'null');
-
-  const authFn = globalContext?.auth;
-  console.log('[getAuthFromContext] Auth function exists?', !!authFn);
-
-  if (!authFn) {
-    throw new Error(
-      'AuthKit middleware is not configured.\n\n' +
-        'Add authkitMiddleware() to your start.ts file:\n\n' +
-        "import { createStart } from '@tanstack/react-start';\n" +
-        "import { authkitMiddleware } from '@workos/authkit-tanstack-start';\n\n" +
-        'export const startInstance = createStart(() => ({\n' +
-        '  requestMiddleware: [authkitMiddleware()],\n' +
-        '}));',
-    );
-  }
-
-  const auth = authFn();
+  const auth = getRawAuthFromContext();
   console.log('[getAuthFromContext] Auth result:', auth?.user?.email || 'no user');
 
   if (!auth.user) {
@@ -221,35 +200,17 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
 export const switchToOrganization = createServerFn({ method: 'POST' })
   .inputValidator((data: { organizationId: string; returnTo?: string }) => data)
   .handler(async ({ data }): Promise<UserInfo> => {
-    const request = getRequest();
     const auth = getAuthFromContext();
 
     if (!auth.user || !auth.accessToken) {
       throw redirect({ to: data.returnTo || '/' });
     }
 
-    const authkit = await getAuthkit();
-    const session = await authkit.getSession(request);
-    if (!session || !session.refreshToken) {
+    const result = await refreshSession(data.organizationId);
+
+    if (!result || !result.user) {
       throw redirect({ to: data.returnTo || '/' });
     }
-
-    const { auth: result, encryptedSession } = await authkit.refreshSession(
-      {
-        accessToken: auth.accessToken,
-        refreshToken: session.refreshToken,
-        user: auth.user,
-        impersonator: auth.impersonator,
-      },
-      data.organizationId,
-    );
-
-    if (!result.user) {
-      throw redirect({ to: data.returnTo || '/' });
-    }
-
-    // Persist the refreshed session
-    await authkit.saveSession(undefined, encryptedSession);
 
     return {
       user: result.user,
@@ -264,13 +225,3 @@ export const switchToOrganization = createServerFn({ method: 'POST' })
       accessToken: result.accessToken,
     };
   });
-
-// Helper to decode state parameter
-function decodeState(state: string): string {
-  try {
-    const decoded = JSON.parse(atob(state));
-    return decoded.returnPathname || '/';
-  } catch {
-    return '/';
-  }
-}

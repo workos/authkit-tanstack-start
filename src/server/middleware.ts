@@ -1,12 +1,18 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { getAuthkit } from './authkit-loader.js';
+import { getAuthkit, validateConfig } from './authkit-loader.js';
 
 // Track if we've validated config to avoid redundant checks
 let configValidated = false;
 
 /**
  * AuthKit middleware for TanStack Start.
- * Runs on every server request and stores authentication state in global context.
+ * Runs on every server request, validates/refreshes sessions, and stores auth in context.
+ *
+ * **What this middleware does:**
+ * 1. Validates current session and refreshes if expiring
+ * 2. Stores refreshed session in WeakMap for downstream handlers (no stale tokens)
+ * 3. Writes Set-Cookie header if session was refreshed
+ * 4. Provides auth to downstream via TanStack context
  *
  * @example
  * ```typescript
@@ -28,15 +34,15 @@ export const authkitMiddleware = () => {
 
     // Validate configuration on first request (fails fast with helpful errors)
     if (!configValidated) {
-      const { validateConfig } = await import('@workos/authkit-session');
-      validateConfig();
+      await validateConfig();
       configValidated = true;
     }
 
-    // authkit.withAuth handles token validation, refresh, and session decryption
+    // Check auth and potentially refresh
     const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
 
-    // Get result from next() - this calls the next middleware/handler
+    // Pass auth to downstream handlers via TanStack context
+    // This is the TanStack way - downstream handlers call getAuthFromContext()
     const result = await args.next({
       context: {
         auth: () => auth,

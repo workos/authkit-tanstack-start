@@ -1,4 +1,5 @@
 import { getAuthkit } from './authkit-loader.js';
+import { decodeState } from './auth-helpers.js';
 import type { HandleCallbackOptions } from './types.js';
 
 /**
@@ -66,15 +67,14 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 
   try {
-    // Decode return pathname from state (can be overridden by options)
-    const stateReturnPathname = decodeReturnPathname(state);
+    // Decode return pathname and custom state
+    const { returnPathname: stateReturnPathname, customState } = decodeState(state);
     const returnPathname = options.returnPathname ?? stateReturnPathname;
 
     // Handle OAuth callback
     const response = new Response();
     const authkit = await getAuthkit();
     const result = await authkit.handleCallback(request, response, { code, state: state ?? undefined });
-
 
     // Extract auth response data
     const { authResponse } = result;
@@ -89,7 +89,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
         oauthTokens: authResponse.oauthTokens,
         authenticationMethod: authResponse.authenticationMethod,
         organizationId: authResponse.organizationId,
-        state: decodeCustomState(state),
+        state: customState,
       });
     }
 
@@ -128,43 +128,9 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 }
 
-// Helper functions
-function decodeReturnPathname(state: string | null): string {
-  if (!state || state === 'null') return '/';
-
-  try {
-    const decoded = JSON.parse(atob(state));
-    return decoded.returnPathname || '/';
-  } catch {
-    return '/';
-  }
-}
-
-function decodeCustomState(state: string | null): string | undefined {
-  if (!state || state === 'null') return undefined;
-
-  // State can have custom user data after a dot separator
-  // Format: base64EncodedInternal.customUserState
-  if (state.includes('.')) {
-    const [, ...rest] = state.split('.');
-    return rest.join('.');
-  }
-
-  // If no dot, check if it's the internal state or custom state
-  try {
-    const decoded = JSON.parse(atob(state));
-    // If it has returnPathname, it's internal state only
-    if (decoded.returnPathname) {
-      return undefined;
-    }
-    // Otherwise it's custom state
-    return state;
-  } catch {
-    // If it's not valid JSON, treat it as custom state
-    return state;
-  }
-}
-
+/**
+ * Builds the redirect URL after OAuth callback.
+ */
 function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   const url = new URL(originalUrl);
 
@@ -187,17 +153,18 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
+/**
+ * Extracts session headers from the auth service result.
+ * Simplified to handle the primary case directly.
+ */
 function extractSessionHeaders(result: any): Record<string, string> {
-  // AuthService returns { response, headers, returnPathname, authResponse }
-  // The session cookie is set on the response object
-  if (result?.response?.headers) {
-    const setCookie = result.response.headers.get('Set-Cookie');
-    if (setCookie) {
-      return { 'Set-Cookie': setCookie };
-    }
+  // Primary case: AuthService sets the session cookie on the response
+  const setCookie = result?.response?.headers?.get?.('Set-Cookie');
+  if (setCookie) {
+    return { 'Set-Cookie': setCookie };
   }
 
-  // Fallback to result.headers if it exists
+  // Fallback: Check if headers were returned directly
   if (result?.headers && typeof result.headers === 'object') {
     return result.headers;
   }

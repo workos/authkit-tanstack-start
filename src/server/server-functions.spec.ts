@@ -5,15 +5,33 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: vi.fn(() => new Request('http://test.local')),
 }));
 
-vi.mock('./authkit', () => ({
-  authkit: {
-    withAuth: vi.fn(),
-    getWorkOS: vi.fn(),
-    handleCallback: vi.fn(),
-    getAuthorizationUrl: vi.fn(),
-    getSignInUrl: vi.fn(),
-    getSignUpUrl: vi.fn(),
-  },
+const mockAuthkit = {
+  withAuth: vi.fn(),
+  getWorkOS: vi.fn(() => ({
+    userManagement: {
+      getLogoutUrl: vi.fn().mockReturnValue('https://auth.workos.com/logout'),
+    },
+  })),
+  signOut: vi.fn().mockResolvedValue({
+    logoutUrl: 'https://auth.workos.com/logout',
+    clearCookieHeader: 'wos-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax',
+  }),
+  handleCallback: vi.fn(),
+  getAuthorizationUrl: vi.fn().mockResolvedValue('https://auth.workos.com/authorize'),
+  getSignInUrl: vi.fn().mockResolvedValue('https://auth.workos.com/signin'),
+  getSignUpUrl: vi.fn().mockResolvedValue('https://auth.workos.com/signup'),
+};
+
+vi.mock('./authkit-loader', () => ({
+  getAuthkit: vi.fn(() => Promise.resolve(mockAuthkit)),
+  getConfig: vi.fn((key: string) => {
+    const configs: Record<string, any> = {
+      clientId: 'test_client_id',
+      redirectUri: 'http://test.local/callback',
+      cookieName: 'wos-session',
+    };
+    return Promise.resolve(configs[key]);
+  }),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -64,7 +82,7 @@ vi.mock('@tanstack/react-start', () => ({
 
 // Now import everything after mocks are set up
 import { getRequest } from '@tanstack/react-start/server';
-import { authkit } from './authkit';
+import { getAuthkit } from './authkit-loader';
 import * as serverFunctions from './server-functions';
 
 describe('Server Functions', () => {
@@ -146,7 +164,7 @@ describe('Server Functions', () => {
         sessionId: 'session_123',
       });
 
-      (authkit.getWorkOS as any).mockReturnValue({
+      mockAuthkit.getWorkOS.mockReturnValue({
         userManagement: {
           getLogoutUrl: vi.fn().mockReturnValue(logoutUrl),
         },
@@ -179,7 +197,7 @@ describe('Server Functions', () => {
   describe('getAuthorizationUrl', () => {
     it('generates authorization URL with all options', async () => {
       const authUrl = 'https://auth.workos.com/authorize?client_id=test';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({
         data: {
@@ -190,7 +208,7 @@ describe('Server Functions', () => {
       });
 
       expect(result).toBe(authUrl);
-      expect(authkit.getAuthorizationUrl).toHaveBeenCalledWith({
+      expect(mockAuthkit.getAuthorizationUrl).toHaveBeenCalledWith({
         screenHint: 'sign-up',
         returnPathname: '/dashboard',
         redirectUri: 'http://custom.local/callback',
@@ -199,7 +217,7 @@ describe('Server Functions', () => {
 
     it('works with minimal options', async () => {
       const authUrl = 'https://auth.workos.com/authorize';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({ data: {} });
 
@@ -208,46 +226,46 @@ describe('Server Functions', () => {
 
     it('handles undefined data', async () => {
       const authUrl = 'https://auth.workos.com/authorize';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({ data: undefined });
 
       expect(result).toBe(authUrl);
-      expect(authkit.getAuthorizationUrl).toHaveBeenCalledWith({});
+      expect(mockAuthkit.getAuthorizationUrl).toHaveBeenCalledWith({});
     });
   });
 
   describe('getSignInUrl', () => {
     it('generates sign-in URL with return path', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
-      (authkit.getSignInUrl as any).mockResolvedValue(signInUrl);
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
       const result = await serverFunctions.getSignInUrl({ data: '/profile' });
 
       expect(result).toBe(signInUrl);
-      expect(authkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: '/profile' });
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: '/profile' });
     });
 
     it('works without return path', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
-      (authkit.getSignInUrl as any).mockResolvedValue(signInUrl);
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
       const result = await serverFunctions.getSignInUrl({ data: undefined });
 
       expect(result).toBe(signInUrl);
-      expect(authkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: undefined });
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: undefined });
     });
   });
 
   describe('getSignUpUrl', () => {
     it('generates sign-up URL with return path', async () => {
       const signUpUrl = 'https://auth.workos.com/sign-up';
-      (authkit.getSignUpUrl as any).mockResolvedValue(signUpUrl);
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
 
       const result = await serverFunctions.getSignUpUrl({ data: '/welcome' });
 
       expect(result).toBe(signUpUrl);
-      expect(authkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/welcome' });
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/welcome' });
     });
   });
 

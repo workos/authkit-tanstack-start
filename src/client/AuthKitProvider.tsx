@@ -81,13 +81,18 @@ export function AuthKitProvider({ children, onSessionExpired }: AuthKitProviderP
         if (error instanceof Response) {
           const location = error.headers.get('Location');
           if (location) {
-            // Check if external URL (WorkOS logout) or internal route
-            const isExternal = location.startsWith('http') && !location.includes(window.location.host);
-            if (isExternal) {
-              // External OAuth/logout URL requires full page navigation
-              window.location.href = location;
-            } else {
-              // Internal routes use TanStack Router navigation
+            try {
+              const url = new URL(location, window.location.origin);
+              if (url.origin === window.location.origin) {
+                // Internal routes use TanStack Router navigation with path only
+                const path = url.pathname + url.search + url.hash;
+                navigate({ to: path });
+              } else {
+                // External OAuth/logout URL requires full page navigation
+                window.location.href = location;
+              }
+            } catch {
+              // Invalid URL - use TanStack Router navigation as-is (for relative paths)
               navigate({ to: location });
             }
             return;

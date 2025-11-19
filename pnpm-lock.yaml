@@ -4,16 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@workos/authkit-session': link:../authkit-session
-
 importers:
 
   .:
     dependencies:
       '@workos/authkit-session':
-        specifier: link:../authkit-session
-        version: link:../authkit-session
+        specifier: 0.2.0-beta.0
+        version: 0.2.0-beta.0
     devDependencies:
       '@tanstack/react-router':
         specifier: ^1.136.8
@@ -81,6 +78,9 @@ importers:
       '@tanstack/react-start':
         specifier: ^1.136.8
         version: 1.136.8(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@7.2.2(@types/node@20.19.25)(tsx@4.20.6))
+      '@workos/authkit-session':
+        specifier: 0.2.0-beta.0
+        version: 0.2.0-beta.0
       '@workos/authkit-tanstack-react-start':
         specifier: workspace:*
         version: link:..
@@ -1724,6 +1724,14 @@ packages:
   '@vitest/utils@4.0.10':
     resolution: {integrity: sha512-kOuqWnEwZNtQxMKg3WmPK1vmhZu9WcoX69iwWjVz+jvKTsF1emzsv3eoPcDr6ykA3qP2bsCQE7CwqfNtAVzsmg==}
 
+  '@workos-inc/node@8.0.0-rc.3':
+    resolution: {integrity: sha512-euZS5tTVqhRfA6YdOQ1mIsMmSHegM1Gnqo8E1KGx+j3+s5ckGrqjKH+5lWMvcBrmI9vaex9MsM6Er9WW/2h2yA==}
+    engines: {node: '>=20.15.0'}
+
+  '@workos/authkit-session@0.2.0-beta.0':
+    resolution: {integrity: sha512-1tfI7PCLil6ueeBBXUuo540XwMnzP8JKSlzGrE/pNMTNC7Faf5Fgza6zmWNzT1D9t/I3VuKXPu7tmEMLXsiWqA==}
+    engines: {node: '>=20.0.0'}
+
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
@@ -2148,6 +2156,9 @@ packages:
 
   jose@6.1.1:
     resolution: {integrity: sha512-GWSqjfOPf4cWOkBzw5THBjtGPhXKqYnfRBzh4Ni+ArTrQQ9unvmsA3oFLqaYKoKe5sjWmGu5wVKg9Ft1i+LQfg==}
+
+  jose@6.1.2:
+    resolution: {integrity: sha512-MpcPtHLE5EmztuFIqB0vzHAWJPpmN1E6L4oo+kze56LIs3MyXIj9ZHMDxqOvkP38gBR7K1v3jqd4WU2+nrfONQ==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -4469,6 +4480,18 @@ snapshots:
       '@vitest/pretty-format': 4.0.10
       tinyrainbow: 3.0.3
 
+  '@workos-inc/node@8.0.0-rc.3':
+    dependencies:
+      iron-session: 8.0.4
+      jose: 6.1.2
+
+  '@workos/authkit-session@0.2.0-beta.0':
+    dependencies:
+      '@workos-inc/node': 8.0.0-rc.3
+      iron-session: 8.0.4
+      iron-webcrypto: 1.2.1
+      jose: 6.1.2
+
   acorn@8.15.0: {}
 
   ansi-regex@5.0.1: {}
@@ -4915,6 +4938,8 @@ snapshots:
       '@pkgjs/parseargs': 0.11.0
 
   jose@6.1.1: {}
+
+  jose@6.1.2: {}
 
   joycon@3.1.1: {}
 

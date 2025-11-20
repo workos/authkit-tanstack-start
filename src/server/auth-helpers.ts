@@ -43,7 +43,6 @@ export function isAuthConfigured(): boolean {
   return !!globalContext?.auth;
 }
 
-
 /**
  * Gets the session with refresh token from the current request.
  * Returns null if no valid session exists.
@@ -61,10 +60,7 @@ export async function getSessionWithRefreshToken(): Promise<{
   }
 
   // Use orchestrator for all dynamic imports
-  const [request, authkit] = await Promise.all([
-    getServerRequest(),
-    getAuthkit(),
-  ]);
+  const [request, authkit] = await Promise.all([getServerRequest(), getAuthkit()]);
   const session = await authkit.getSession(request);
 
   if (!session?.refreshToken) {

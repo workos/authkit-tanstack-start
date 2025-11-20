@@ -6,11 +6,13 @@ const mockWithAuth = vi.fn();
 const mockGetSignInUrl = vi.fn();
 
 vi.mock('./authkit-loader', () => ({
-  getAuthkit: vi.fn(() => Promise.resolve({
-    withAuth: mockWithAuth,
-    handleCallback: mockHandleCallback,
-    getSignInUrl: mockGetSignInUrl,
-  })),
+  getAuthkit: vi.fn(() =>
+    Promise.resolve({
+      withAuth: mockWithAuth,
+      handleCallback: mockHandleCallback,
+      getSignInUrl: mockGetSignInUrl,
+    }),
+  ),
 }));
 
 vi.mock('@tanstack/react-router', () => ({

@@ -57,10 +57,7 @@ export const signOut = createServerFn({ method: 'POST' })
 
     // Use AuthOperations for sign out logic
     // This handles logout URL generation and cookie clear header building
-    const { logoutUrl, clearCookieHeader } = await authkit.signOut(
-      auth.sessionId,
-      { returnTo: data?.returnTo },
-    );
+    const { logoutUrl, clearCookieHeader } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
 
     // Clear session and redirect to WorkOS logout
     throw redirect({

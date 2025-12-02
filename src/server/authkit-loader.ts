@@ -25,11 +25,11 @@ let validateConfigFn: (() => void) | undefined;
 export async function getAuthkit(): Promise<AuthService<Request, Response>> {
   if (!authkitInstance) {
     // These imports happen ONLY when this function is called (on server)
-    const { createAuthService, getConfigurationProvider } = await import('@workos/authkit-session');
+    const { createAuthService } = await import('@workos/authkit-session');
     const { TanStackStartCookieSessionStorage } = await import('./storage.js');
 
     authkitInstance = createAuthService({
-      sessionStorageFactory: (config) => new TanStackStartCookieSessionStorage(getConfigurationProvider()),
+      sessionStorageFactory: config => new TanStackStartCookieSessionStorage(config),
     });
   }
 

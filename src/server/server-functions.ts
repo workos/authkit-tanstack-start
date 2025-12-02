@@ -55,18 +55,27 @@ export const signOut = createServerFn({ method: 'POST' })
     // Get authkit instance (lazy loaded)
     const authkit = await getAuthkit();
 
-    // Use AuthOperations for sign out logic
-    // This handles logout URL generation and cookie clear header building
-    const { logoutUrl, clearCookieHeader } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
+    // Get logout URL and session clear headers from storage
+    const { logoutUrl, headers: headersBag } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
+
+    // Convert HeadersBag to Headers for TanStack compatibility
+    const headers = new Headers();
+    if (headersBag) {
+      for (const [key, value] of Object.entries(headersBag)) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => headers.append(key, v));
+        } else {
+          headers.set(key, value);
+        }
+      }
+    }
 
     // Clear session and redirect to WorkOS logout
     throw redirect({
       href: logoutUrl,
       throw: true,
       reloadDocument: true,
-      headers: {
-        'Set-Cookie': clearCookieHeader,
-      },
+      headers,
     });
   });
 

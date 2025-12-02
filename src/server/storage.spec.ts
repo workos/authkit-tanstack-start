@@ -1,10 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { TanStackStartCookieSessionStorage } from './storage';
 
+const mockConfig = {
+  clientId: 'test-client-id',
+  apiKey: 'test-api-key',
+  redirectUri: 'https://example.com/callback',
+  cookiePassword: 'test-password-that-is-32-chars-long!!',
+  cookieName: 'wos_session',
+  cookieSameSite: 'lax' as const,
+  apiHttps: true,
+  cookieMaxAge: 60 * 60 * 24 * 400,
+};
+
 describe('TanStackStartCookieSessionStorage', () => {
-  const storage = new TanStackStartCookieSessionStorage({
-    getValue: (key: string) => (key === 'cookieName' ? 'wos_session' : undefined),
-  } as any);
+  const storage = new TanStackStartCookieSessionStorage(mockConfig);
 
   describe('getSession', () => {
     it('extracts session from cookies', async () => {

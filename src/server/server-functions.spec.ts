@@ -14,7 +14,7 @@ const mockAuthkit = {
   })),
   signOut: vi.fn().mockResolvedValue({
     logoutUrl: 'https://auth.workos.com/logout',
-    clearCookieHeader: 'wos-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax',
+    headers: { 'Set-Cookie': 'wos-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' },
   }),
   handleCallback: vi.fn(),
   getAuthorizationUrl: vi.fn().mockResolvedValue('https://auth.workos.com/authorize'),
@@ -176,7 +176,7 @@ describe('Server Functions', () => {
       } catch (error: any) {
         expect(error.message).toBe('REDIRECT');
         expect(error.options.href).toBe(logoutUrl);
-        expect(error.options.headers['Set-Cookie']).toContain('wos-session=');
+        expect(error.options.headers.get('Set-Cookie')).toContain('wos-session=');
       }
     });
 

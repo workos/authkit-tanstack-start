@@ -67,19 +67,14 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 
   try {
-    // Decode return pathname and custom state
     const { returnPathname: stateReturnPathname, customState } = decodeState(state);
     const returnPathname = options.returnPathname ?? stateReturnPathname;
 
-    // Handle OAuth callback
     const response = new Response();
     const authkit = await getAuthkit();
     const result = await authkit.handleCallback(request, response, { code, state: state ?? undefined });
-
-    // Extract auth response data
     const { authResponse } = result;
 
-    // Call onSuccess hook if provided
     if (options.onSuccess) {
       await options.onSuccess({
         accessToken: authResponse.accessToken,
@@ -93,10 +88,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
       });
     }
 
-    // Build redirect URL
     const redirectUrl = buildRedirectUrl(url, returnPathname);
-
-    // Extract session headers from the result
     const sessionHeaders = extractSessionHeaders(result);
 
     return new Response(null, {
@@ -107,10 +99,8 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
       },
     });
   } catch (error) {
-    // Log the actual error for debugging
     console.error('OAuth callback failed:', error);
 
-    // Use custom error handler if provided
     if (options.onError) {
       return options.onError({ error, request });
     }
@@ -153,18 +143,12 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
-/**
- * Extracts session headers from the auth service result.
- * Simplified to handle the primary case directly.
- */
 function extractSessionHeaders(result: any): Record<string, string> {
-  // Primary case: AuthService sets the session cookie on the response
   const setCookie = result?.response?.headers?.get?.('Set-Cookie');
   if (setCookie) {
     return { 'Set-Cookie': setCookie };
   }
 
-  // Fallback: Check if headers were returned directly
   if (result?.headers && typeof result.headers === 'object') {
     return result.headers;
   }

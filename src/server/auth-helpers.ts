@@ -1,16 +1,8 @@
-/**
- * Centralized auth helper functions to reduce code duplication.
- * All dynamic imports are now handled through the authkit-loader orchestrator.
- */
-
 import { getGlobalStartContext } from '@tanstack/react-start';
 import { getAuthkit, getServerRequest } from './authkit-loader.js';
 import type { AuthResult } from '@workos/authkit-session';
 import type { User, Impersonator } from '../types.js';
 
-/**
- * Error message for missing middleware configuration.
- */
 const MIDDLEWARE_NOT_CONFIGURED_ERROR =
   'AuthKit middleware is not configured.\n\n' +
   'Add authkitMiddleware() to your start.ts file:\n\n' +
@@ -59,7 +51,6 @@ export async function getSessionWithRefreshToken(): Promise<{
     return null;
   }
 
-  // Use orchestrator for all dynamic imports
   const [request, authkit] = await Promise.all([getServerRequest(), getAuthkit()]);
   const session = await authkit.getSession(request);
 

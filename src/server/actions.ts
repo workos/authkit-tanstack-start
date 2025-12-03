@@ -50,9 +50,7 @@ export const checkSessionAction = createServerFn({ method: 'GET' }).handler(() =
 export const getAuthAction = createServerFn({ method: 'GET' })
   .inputValidator((options?: { ensureSignedIn?: boolean }) => options)
   .handler(({ data: options }): Omit<UserInfo, 'accessToken'> | NoUserInfo => {
-    console.log('[getAuthAction] Called from client with options:', options);
     const auth = getRawAuthFromContext();
-    console.log('[getAuthAction] Auth result:', auth?.user?.email || 'no user');
     return sanitizeAuthForClient(auth);
   });
 

@@ -84,9 +84,7 @@ export const signOut = createServerFn({ method: 'POST' })
  * Used by other server functions and the public getAuth server function.
  */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
-  console.log('[getAuthFromContext] Getting global context...');
   const auth = getRawAuthFromContext();
-  console.log('[getAuthFromContext] Auth result:', auth?.user?.email || 'no user');
 
   if (!auth.user) {
     return { user: null };

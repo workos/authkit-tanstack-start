@@ -29,7 +29,7 @@ export async function getAuthkit(): Promise<AuthService<Request, Response>> {
     const { TanStackStartCookieSessionStorage } = await import('./storage.js');
 
     authkitInstance = createAuthService({
-      sessionStorageFactory: config => new TanStackStartCookieSessionStorage(config),
+      sessionStorageFactory: (config) => new TanStackStartCookieSessionStorage(config),
     });
   }
 

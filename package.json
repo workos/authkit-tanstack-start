@@ -72,9 +72,9 @@
     "react-dom": "^18.0 || ^19.0"
   },
   "devDependencies": {
-    "@tanstack/react-router": "^1.139.14",
-    "@tanstack/react-router-devtools": "^1.139.14",
-    "@tanstack/react-start": "^1.139.14",
+    "@tanstack/react-router": "^1.140.0",
+    "@tanstack/react-router-devtools": "^1.140.0",
+    "@tanstack/react-start": "^1.140.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -83,9 +83,9 @@
     "@vitest/coverage-v8": "4.0.15",
     "@vitest/ui": "^4.0.15",
     "happy-dom": "^20.0.11",
-    "prettier": "^3.7.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "prettier": "^3.7.4",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"

@@ -63,7 +63,7 @@
     "url": "https://github.com/workos/authkit-tanstack-start/issues"
   },
   "dependencies": {
-    "@workos/authkit-session": "0.2.0"
+    "@workos/authkit-session": "0.3.0"
   },
   "peerDependencies": {
     "@tanstack/react-router": ">=1.0.0",

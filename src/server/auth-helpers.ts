@@ -118,6 +118,7 @@ export function decodeState(state: string | null): { returnPathname: string; cus
       if (decoded.returnPathname) {
         return { returnPathname: decoded.returnPathname, customState };
       }
+      return { returnPathname: '/', customState };
     } catch {
       // If internal part isn't valid base64/json, treat everything after first dot as custom
       return { returnPathname: '/', customState };

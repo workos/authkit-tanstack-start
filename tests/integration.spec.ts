@@ -42,10 +42,18 @@ describe('Integration tests', () => {
     expect(storage.TanStackStartCookieSessionStorage).toBeDefined();
     expect(typeof storage.TanStackStartCookieSessionStorage).toBe('function');
 
-    // Verify it's a constructor
-    const instance = new storage.TanStackStartCookieSessionStorage({
-      getValue: () => 'test',
-    } as any);
+    // Verify it's a constructor (now takes AuthKitConfig)
+    const mockConfig = {
+      clientId: 'test-client-id',
+      apiKey: 'test-api-key',
+      redirectUri: 'https://example.com/callback',
+      cookiePassword: 'test-password-that-is-32-chars-long!!',
+      cookieName: 'wos_session',
+      cookieSameSite: 'lax' as const,
+      apiHttps: true,
+      cookieMaxAge: 60 * 60 * 24 * 400,
+    };
+    const instance = new storage.TanStackStartCookieSessionStorage(mockConfig);
 
     expect(instance).toBeDefined();
     expect(typeof instance.getSession).toBe('function');

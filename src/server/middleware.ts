@@ -1,43 +1,80 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { authkit } from './authkit.js';
-import { validateConfig } from '@workos/authkit-session';
+import { getAuthkit, validateConfig } from './authkit-loader.js';
 
-// Track if we've validated config to avoid redundant checks
 let configValidated = false;
 
 /**
  * AuthKit middleware for TanStack Start.
- * Runs on every server request and stores authentication state in global context.
+ * Validates/refreshes sessions and provides auth context to downstream handlers.
  *
  * @example
  * ```typescript
- * // In your start.ts
  * import { createStart } from '@tanstack/react-start';
  * import { authkitMiddleware } from '@workos/authkit-tanstack-start';
  *
- * export const startInstance = createStart(() => {
- *   return {
- *     requestMiddleware: [authkitMiddleware()],
- *   };
- * });
+ * export const startInstance = createStart(() => ({
+ *   requestMiddleware: [authkitMiddleware()],
+ * }));
  * ```
  */
 export const authkitMiddleware = () => {
   return createMiddleware().server(async (args) => {
-    // Validate configuration on first request (fails fast with helpful errors)
+    const authkit = await getAuthkit();
+
     if (!configValidated) {
-      validateConfig();
+      await validateConfig();
       configValidated = true;
     }
 
-    // authkit.withAuth handles token validation, refresh, and session decryption
-    const authResult = await authkit.withAuth(args.request);
+    const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
+    const pendingHeaders = new Headers();
 
-    // Store auth result in global context for routes and server functions to access
-    return args.next({
+    const result = await args.next({
       context: {
-        auth: () => authResult,
+        auth: () => auth,
+        request: args.request,
+        __setPendingHeader: (key: string, value: string) => {
+          // Use append for Set-Cookie to support multiple cookies
+          if (key.toLowerCase() === 'set-cookie') {
+            pendingHeaders.append(key, value);
+          } else {
+            pendingHeaders.set(key, value);
+          }
+        },
       },
     });
+
+    // Apply refreshed session cookie. Context is unavailable after args.next(),
+    // so saveSession returns headers on the response instead of via context.
+    if (refreshedSessionData) {
+      const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
+      // Extract Set-Cookie headers from response and add to pendingHeaders
+      const setCookieHeader = sessionResponse?.headers.get('Set-Cookie');
+      if (setCookieHeader) {
+        pendingHeaders.append('Set-Cookie', setCookieHeader);
+      }
+    }
+
+    const headerEntries = [...pendingHeaders];
+    if (headerEntries.length === 0) {
+      return result;
+    }
+
+    const newResponse = new Response(result.response.body, {
+      status: result.response.status,
+      statusText: result.response.statusText,
+      headers: result.response.headers,
+    });
+
+    for (const [key, value] of headerEntries) {
+      // Use append for Set-Cookie to preserve multiple cookie values
+      if (key.toLowerCase() === 'set-cookie') {
+        newResponse.headers.append(key, value);
+      } else {
+        newResponse.headers.set(key, value);
+      }
+    }
+
+    return { ...result, response: newResponse };
   });
 };

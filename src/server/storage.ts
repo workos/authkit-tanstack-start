@@ -1,9 +1,6 @@
 import { CookieSessionStorage } from '@workos/authkit-session';
+import { getAuthKitContextOrNull } from './context.js';
 
-/**
- * TanStack Start compatible CookieSessionStorage implementation for WorkOS AuthKit.
- * This class handles session storage using cookies with Request/Response objects.
- */
 export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Request, Response> {
   async getSession(request: Request): Promise<string | null> {
     const cookieHeader = request.headers.get('cookie');
@@ -18,6 +15,16 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     response: Response | undefined,
     headers: Record<string, string>,
   ): Promise<{ response: Response }> {
+    const ctx = getAuthKitContextOrNull();
+
+    // When middleware context is available, use it exclusively
+    if (ctx?.__setPendingHeader) {
+      Object.entries(headers).forEach(([key, value]) => ctx.__setPendingHeader(key, value));
+      return { response: response ?? new Response() };
+    }
+
+    // Fallback: Context unavailable (e.g., after args.next() in middleware).
+    // Return headers on response - caller must extract and apply them.
     const newResponse = response
       ? new Response(response.body, {
           status: response.status,
@@ -26,11 +33,7 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
         })
       : new Response();
 
-    // Apply all headers at once
-    Object.entries(headers).forEach(([key, value]) => {
-      newResponse.headers.append(key, value);
-    });
-
+    Object.entries(headers).forEach(([key, value]) => newResponse.headers.append(key, value));
     return { response: newResponse };
   }
 

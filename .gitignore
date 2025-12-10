@@ -16,3 +16,5 @@ yarn.lock
 .vinxi/
 dist/
 coverage/
+
+test-results/

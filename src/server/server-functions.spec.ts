@@ -5,15 +5,33 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: vi.fn(() => new Request('http://test.local')),
 }));
 
-vi.mock('./authkit', () => ({
-  authkit: {
-    withAuth: vi.fn(),
-    getWorkOS: vi.fn(),
-    handleCallback: vi.fn(),
-    getAuthorizationUrl: vi.fn(),
-    getSignInUrl: vi.fn(),
-    getSignUpUrl: vi.fn(),
-  },
+const mockAuthkit = {
+  withAuth: vi.fn(),
+  getWorkOS: vi.fn(() => ({
+    userManagement: {
+      getLogoutUrl: vi.fn().mockReturnValue('https://auth.workos.com/logout'),
+    },
+  })),
+  signOut: vi.fn().mockResolvedValue({
+    logoutUrl: 'https://auth.workos.com/logout',
+    headers: { 'Set-Cookie': 'wos-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' },
+  }),
+  handleCallback: vi.fn(),
+  getAuthorizationUrl: vi.fn().mockResolvedValue('https://auth.workos.com/authorize'),
+  getSignInUrl: vi.fn().mockResolvedValue('https://auth.workos.com/signin'),
+  getSignUpUrl: vi.fn().mockResolvedValue('https://auth.workos.com/signup'),
+};
+
+vi.mock('./authkit-loader', () => ({
+  getAuthkit: vi.fn(() => Promise.resolve(mockAuthkit)),
+  getConfig: vi.fn((key: string) => {
+    const configs: Record<string, any> = {
+      clientId: 'test_client_id',
+      redirectUri: 'http://test.local/callback',
+      cookieName: 'wos-session',
+    };
+    return Promise.resolve(configs[key]);
+  }),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -59,12 +77,13 @@ vi.mock('@tanstack/react-start', () => ({
   }),
   getGlobalStartContext: () => ({
     auth: mockAuthContext,
+    request: new Request('http://test.local'),
   }),
 }));
 
 // Now import everything after mocks are set up
 import { getRequest } from '@tanstack/react-start/server';
-import { authkit } from './authkit';
+import { getAuthkit } from './authkit-loader';
 import * as serverFunctions from './server-functions';
 
 describe('Server Functions', () => {
@@ -146,7 +165,7 @@ describe('Server Functions', () => {
         sessionId: 'session_123',
       });
 
-      (authkit.getWorkOS as any).mockReturnValue({
+      mockAuthkit.getWorkOS.mockReturnValue({
         userManagement: {
           getLogoutUrl: vi.fn().mockReturnValue(logoutUrl),
         },
@@ -158,7 +177,7 @@ describe('Server Functions', () => {
       } catch (error: any) {
         expect(error.message).toBe('REDIRECT');
         expect(error.options.href).toBe(logoutUrl);
-        expect(error.options.headers['Set-Cookie']).toContain('wos-session=');
+        expect(error.options.headers.get('Set-Cookie')).toContain('wos-session=');
       }
     });
 
@@ -179,7 +198,7 @@ describe('Server Functions', () => {
   describe('getAuthorizationUrl', () => {
     it('generates authorization URL with all options', async () => {
       const authUrl = 'https://auth.workos.com/authorize?client_id=test';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({
         data: {
@@ -190,7 +209,7 @@ describe('Server Functions', () => {
       });
 
       expect(result).toBe(authUrl);
-      expect(authkit.getAuthorizationUrl).toHaveBeenCalledWith({
+      expect(mockAuthkit.getAuthorizationUrl).toHaveBeenCalledWith({
         screenHint: 'sign-up',
         returnPathname: '/dashboard',
         redirectUri: 'http://custom.local/callback',
@@ -199,7 +218,7 @@ describe('Server Functions', () => {
 
     it('works with minimal options', async () => {
       const authUrl = 'https://auth.workos.com/authorize';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({ data: {} });
 
@@ -208,46 +227,158 @@ describe('Server Functions', () => {
 
     it('handles undefined data', async () => {
       const authUrl = 'https://auth.workos.com/authorize';
-      (authkit.getAuthorizationUrl as any).mockResolvedValue(authUrl);
+      mockAuthkit.getAuthorizationUrl.mockResolvedValue(authUrl);
 
       const result = await serverFunctions.getAuthorizationUrl({ data: undefined });
 
       expect(result).toBe(authUrl);
-      expect(authkit.getAuthorizationUrl).toHaveBeenCalledWith({});
+      expect(mockAuthkit.getAuthorizationUrl).toHaveBeenCalledWith({});
     });
   });
 
   describe('getSignInUrl', () => {
     it('generates sign-in URL with return path', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
-      (authkit.getSignInUrl as any).mockResolvedValue(signInUrl);
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
       const result = await serverFunctions.getSignInUrl({ data: '/profile' });
 
       expect(result).toBe(signInUrl);
-      expect(authkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: '/profile' });
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: '/profile' });
     });
 
     it('works without return path', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
-      (authkit.getSignInUrl as any).mockResolvedValue(signInUrl);
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
       const result = await serverFunctions.getSignInUrl({ data: undefined });
 
       expect(result).toBe(signInUrl);
-      expect(authkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: undefined });
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: undefined });
     });
   });
 
   describe('getSignUpUrl', () => {
     it('generates sign-up URL with return path', async () => {
       const signUpUrl = 'https://auth.workos.com/sign-up';
-      (authkit.getSignUpUrl as any).mockResolvedValue(signUpUrl);
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
 
       const result = await serverFunctions.getSignUpUrl({ data: '/welcome' });
 
       expect(result).toBe(signUpUrl);
-      expect(authkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/welcome' });
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/welcome' });
+    });
+
+    it('accepts object with returnPathname', async () => {
+      const signUpUrl = 'https://auth.workos.com/sign-up';
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
+
+      const result = await serverFunctions.getSignUpUrl({ data: { returnPathname: '/onboarding' } });
+
+      expect(result).toBe(signUpUrl);
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/onboarding' });
+    });
+  });
+
+  describe('signOut headers handling', () => {
+    it('handles array header values', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+      });
+
+      mockAuthkit.signOut.mockResolvedValue({
+        logoutUrl: 'https://auth.workos.com/logout',
+        headers: {
+          'Set-Cookie': ['cookie1=value1', 'cookie2=value2'],
+        },
+      });
+
+      try {
+        await serverFunctions.signOut({ data: {} });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        // Verify array headers were appended
+        expect(error.options.headers.get('Set-Cookie')).toContain('cookie1=value1');
+      }
+    });
+  });
+
+  describe('switchToOrganization', () => {
+    it('redirects when no user in auth context', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/');
+      }
+    });
+
+    it('redirects with returnTo when no user', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123', returnTo: '/login' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/login');
+      }
+    });
+
+    it('redirects when refresh returns no user', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+        accessToken: 'token',
+      });
+
+      // Mock refreshSession to return null
+      const authHelpers = await import('./auth-helpers');
+      vi.spyOn(authHelpers, 'refreshSession').mockResolvedValue(null);
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/');
+      }
+    });
+
+    it('returns user info on successful switch', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+        accessToken: 'token',
+      });
+
+      const authHelpers = await import('./auth-helpers');
+      vi.spyOn(authHelpers, 'refreshSession').mockResolvedValue({
+        user: { id: 'user_123', email: 'test@example.com' },
+        sessionId: 'new_session',
+        accessToken: 'new_token',
+        claims: {
+          org_id: 'org_456',
+          role: 'admin',
+          roles: ['admin'],
+          permissions: ['read', 'write'],
+          entitlements: ['premium'],
+          feature_flags: ['beta'],
+        },
+        impersonator: undefined,
+      } as any);
+
+      const result = await serverFunctions.switchToOrganization({ data: { organizationId: 'org_456' } });
+
+      expect(result.user).toEqual({ id: 'user_123', email: 'test@example.com' });
+      expect(result.organizationId).toBe('org_456');
+      expect(result.role).toBe('admin');
+      expect(result.permissions).toEqual(['read', 'write']);
     });
   });
 

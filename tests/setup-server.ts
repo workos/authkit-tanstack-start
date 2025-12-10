@@ -5,4 +5,5 @@ vi.mock('@tanstack/react-start/server', () => ({
   getCookie: vi.fn(),
   setCookie: vi.fn(),
   deleteCookie: vi.fn(),
+  setResponseHeaders: vi.fn(),
 }));

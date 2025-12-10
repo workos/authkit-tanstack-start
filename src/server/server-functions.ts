@@ -1,9 +1,10 @@
-import { createServerFn, getGlobalStartContext } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
+import { createServerFn } from '@tanstack/react-start';
 import { redirect } from '@tanstack/react-router';
-import { getConfig } from '@workos/authkit-session';
-import { authkit } from './authkit.js';
+import { getAuthkit, getConfig } from './authkit-loader.js';
+import { getRawAuthFromContext, getSessionWithRefreshToken, refreshSession } from './auth-helpers.js';
 import type { User, Impersonator } from '../types.js';
+
+// Type-only import - safe for bundling
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
 
 // Type exports - re-export shared types from authkit-session
@@ -51,47 +52,36 @@ export const signOut = createServerFn({ method: 'POST' })
       });
     }
 
-    const workos = authkit.getWorkOS();
-    const logoutUrl = workos.userManagement.getLogoutUrl({
-      sessionId: auth.sessionId,
-      returnTo: data?.returnTo,
-    });
+    // Get authkit instance (lazy loaded)
+    const authkit = await getAuthkit();
 
-    // Get the configured cookie name from authkit
-    const cookieName = getConfig('cookieName');
+    // Get logout URL and session clear headers from storage
+    const { logoutUrl, headers: headersBag } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
+
+    // Convert HeadersBag to Headers for TanStack compatibility
+    const headers = new Headers();
+    if (headersBag) {
+      for (const [key, value] of Object.entries(headersBag)) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => headers.append(key, v));
+        } else {
+          headers.set(key, value);
+        }
+      }
+    }
 
     // Clear session and redirect to WorkOS logout
     throw redirect({
       href: logoutUrl,
       throw: true,
       reloadDocument: true,
-      headers: {
-        'Set-Cookie': `${cookieName}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=lax`,
-      },
+      headers,
     });
   });
 
-/**
- * Internal function to get auth from context (server-only).
- * Used by other server functions and the public getAuth server function.
- */
+/** Internal function to get auth from context (server-only). */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
-  // @ts-expect-error - TanStack Start's getGlobalStartContext() returns untyped context
-  const authFn = getGlobalStartContext()?.auth;
-
-  if (!authFn) {
-    throw new Error(
-      'AuthKit middleware is not configured.\n\n' +
-        'Add authkitMiddleware() to your start.ts file:\n\n' +
-        "import { createStart } from '@tanstack/react-start';\n" +
-        "import { authkitMiddleware } from '@workos/authkit-tanstack-start';\n\n" +
-        'export const startInstance = createStart(() => ({\n' +
-        '  requestMiddleware: [authkitMiddleware()],\n' +
-        '}));',
-    );
-  }
-
-  const auth = authFn();
+  const auth = getRawAuthFromContext();
 
   if (!auth.user) {
     return { user: null };
@@ -144,6 +134,7 @@ export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | 
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
+    const authkit = await getAuthkit();
     return authkit.getAuthorizationUrl(options);
   });
 
@@ -164,6 +155,7 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const authkit = await getAuthkit();
     return authkit.getSignInUrl({ returnPathname });
   });
 
@@ -184,6 +176,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | { returnPathname?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const authkit = await getAuthkit();
     return authkit.getSignUpUrl({ returnPathname });
   });
 
@@ -191,69 +184,38 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  * Switch the active organization for the current session.
  * Refreshes the session with organization-specific claims (role, permissions, etc).
  *
- * @param organizationId - The ID of the organization to switch to
- * @param options - Optional configuration
- * @returns The updated authentication context with new organization claims
- *
  * @example
  * ```typescript
  * import { switchToOrganization } from '@workos/authkit-tanstack-start';
  *
- * // In a server function or route loader
- * const auth = await switchToOrganization({
- *   data: { organizationId: 'org_123' }
- * });
+ * const auth = await switchToOrganization({ data: { organizationId: 'org_123' } });
  * ```
  */
 export const switchToOrganization = createServerFn({ method: 'POST' })
   .inputValidator((data: { organizationId: string; returnTo?: string }) => data)
   .handler(async ({ data }): Promise<UserInfo> => {
-    const request = getRequest();
     const auth = getAuthFromContext();
 
-    if (!auth.user || !auth.accessToken) {
+    if (!auth.user) {
       throw redirect({ to: data.returnTo || '/' });
     }
 
-    const session = await authkit.getSession(request);
-    if (!session || !session.refreshToken) {
-      throw redirect({ to: data.returnTo || '/' });
-    }
+    const result = await refreshSession(data.organizationId);
 
-    const result = await authkit.refreshSession(
-      {
-        accessToken: auth.accessToken,
-        refreshToken: session.refreshToken,
-        user: auth.user,
-        impersonator: auth.impersonator,
-      },
-      data.organizationId,
-    );
-
-    if (!result.user) {
+    if (!result?.user) {
       throw redirect({ to: data.returnTo || '/' });
     }
 
     return {
       user: result.user,
       sessionId: result.sessionId,
-      organizationId: result.organizationId,
-      role: result.role,
-      roles: result.roles,
-      permissions: result.permissions,
-      entitlements: result.entitlements,
+      organizationId: result.claims?.org_id,
+      role: result.claims?.role,
+      roles: result.claims?.roles,
+      permissions: result.claims?.permissions,
+      entitlements: result.claims?.entitlements,
       featureFlags: result.claims?.feature_flags,
       impersonator: result.impersonator,
-      accessToken: result.accessToken!,
+      accessToken: result.accessToken,
     };
   });
-
-// Helper to decode state parameter
-function decodeState(state: string): string {
-  try {
-    const decoded = JSON.parse(atob(state));
-    return decoded.returnPathname || '/';
-  } catch {
-    return '/';
-  }
-}

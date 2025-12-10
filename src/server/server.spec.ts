@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Setup mocks before imports
-vi.mock('./authkit', () => ({
-  authkit: {
-    withAuth: vi.fn(),
-    handleCallback: vi.fn(),
-    getSignInUrl: vi.fn(),
-  },
+const mockHandleCallback = vi.fn();
+const mockWithAuth = vi.fn();
+const mockGetSignInUrl = vi.fn();
+
+vi.mock('./authkit-loader', () => ({
+  getAuthkit: vi.fn(() =>
+    Promise.resolve({
+      withAuth: mockWithAuth,
+      handleCallback: mockHandleCallback,
+      getSignInUrl: mockGetSignInUrl,
+    }),
+  ),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -16,7 +22,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 import { handleCallbackRoute } from './server';
-import { authkit } from './authkit';
+import { getAuthkit } from './authkit-loader';
 
 describe('handleCallbackRoute', () => {
   beforeEach(() => {
@@ -35,7 +41,7 @@ describe('handleCallbackRoute', () => {
 
   it('processes valid callback', async () => {
     const request = new Request('http://example.com/callback?code=auth_123');
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -54,7 +60,7 @@ describe('handleCallbackRoute', () => {
   it('decodes state for return path', async () => {
     const state = btoa(JSON.stringify({ returnPathname: '/dashboard' }));
     const request = new Request(`http://example.com/callback?code=auth_123&state=${state}`);
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -72,7 +78,7 @@ describe('handleCallbackRoute', () => {
   it('handles state with query params in return path', async () => {
     const state = btoa(JSON.stringify({ returnPathname: '/search?q=test&page=2' }));
     const request = new Request(`http://example.com/callback?code=auth_123&state=${state}`);
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -89,7 +95,7 @@ describe('handleCallbackRoute', () => {
 
   it('handles invalid state gracefully', async () => {
     const request = new Request('http://example.com/callback?code=auth_123&state=invalid_base64');
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -107,7 +113,7 @@ describe('handleCallbackRoute', () => {
 
   it('handles null state', async () => {
     const request = new Request('http://example.com/callback?code=auth_123&state=null');
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -124,12 +130,11 @@ describe('handleCallbackRoute', () => {
 
   it('extracts session headers from response', async () => {
     const request = new Request('http://example.com/callback?code=auth_123');
-    const sessionHeaders = new Map([
-      ['Set-Cookie', 'session=abc123'],
-      ['X-Custom', 'value'],
-    ]);
-    (authkit.handleCallback as any).mockResolvedValue({
-      response: { headers: sessionHeaders },
+    mockHandleCallback.mockResolvedValue({
+      headers: {
+        'Set-Cookie': 'session=abc123',
+        'X-Custom': 'value',
+      },
       authResponse: {
         accessToken: 'access_token',
         refreshToken: 'refresh_token',
@@ -146,7 +151,7 @@ describe('handleCallbackRoute', () => {
 
   it('handles callback errors', async () => {
     const request = new Request('http://example.com/callback?code=invalid');
-    (authkit.handleCallback as any).mockRejectedValue(new Error('Invalid code'));
+    mockHandleCallback.mockRejectedValue(new Error('Invalid code'));
 
     // Suppress expected error log
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -174,7 +179,7 @@ describe('handleCallbackRoute', () => {
       organizationId: 'org_123',
     };
 
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: mockAuthResponse,
     });
@@ -199,7 +204,7 @@ describe('handleCallbackRoute', () => {
   it('calls onSuccess with custom state', async () => {
     const customState = 'custom.user.state';
     const request = new Request(`http://example.com/callback?code=auth_123&state=${customState}`);
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -221,7 +226,7 @@ describe('handleCallbackRoute', () => {
 
   it('uses custom returnPathname from options', async () => {
     const request = new Request('http://example.com/callback?code=auth_123');
-    (authkit.handleCallback as any).mockResolvedValue({
+    mockHandleCallback.mockResolvedValue({
       response: { headers: new Map() },
       authResponse: {
         accessToken: 'access_token',
@@ -255,7 +260,7 @@ describe('handleCallbackRoute', () => {
   it('calls onError hook on callback failure', async () => {
     const request = new Request('http://example.com/callback?code=invalid');
     const error = new Error('Auth failed');
-    (authkit.handleCallback as any).mockRejectedValue(error);
+    mockHandleCallback.mockRejectedValue(error);
 
     const onError = vi.fn().mockReturnValue(new Response('Custom error page', { status: 500 }));
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

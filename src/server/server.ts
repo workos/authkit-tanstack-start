@@ -1,4 +1,5 @@
-import { authkit } from './authkit.js';
+import { getAuthkit } from './authkit-loader.js';
+import { decodeState } from './auth-helpers.js';
 import type { HandleCallbackOptions } from './types.js';
 
 /**
@@ -66,18 +67,14 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 
   try {
-    // Decode return pathname from state (can be overridden by options)
-    const stateReturnPathname = decodeReturnPathname(state);
+    const { returnPathname: stateReturnPathname, customState } = decodeState(state);
     const returnPathname = options.returnPathname ?? stateReturnPathname;
 
-    // Handle OAuth callback
     const response = new Response();
+    const authkit = await getAuthkit();
     const result = await authkit.handleCallback(request, response, { code, state: state ?? undefined });
-
-    // Extract auth response data
     const { authResponse } = result;
 
-    // Call onSuccess hook if provided
     if (options.onSuccess) {
       await options.onSuccess({
         accessToken: authResponse.accessToken,
@@ -87,15 +84,12 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
         oauthTokens: authResponse.oauthTokens,
         authenticationMethod: authResponse.authenticationMethod,
         organizationId: authResponse.organizationId,
-        state: decodeCustomState(state),
+        state: customState,
       });
     }
 
-    // Build redirect URL
     const redirectUrl = buildRedirectUrl(url, returnPathname);
-
-    // Extract session headers from the result
-    const sessionHeaders = extractSessionHeaders(result.response);
+    const sessionHeaders = extractSessionHeaders(result);
 
     return new Response(null, {
       status: 307,
@@ -105,10 +99,8 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
       },
     });
   } catch (error) {
-    // Log the actual error for debugging
     console.error('OAuth callback failed:', error);
 
-    // Use custom error handler if provided
     if (options.onError) {
       return options.onError({ error, request });
     }
@@ -126,58 +118,15 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 }
 
-// Helper functions
-function decodeReturnPathname(state: string | null): string {
-  if (!state || state === 'null') return '/';
-
-  try {
-    const decoded = JSON.parse(atob(state));
-    return decoded.returnPathname || '/';
-  } catch {
-    return '/';
-  }
-}
-
-function decodeCustomState(state: string | null): string | undefined {
-  if (!state || state === 'null') return undefined;
-
-  // State can have custom user data after a dot separator
-  // Format: base64EncodedInternal.customUserState
-  if (state.includes('.')) {
-    const [, ...rest] = state.split('.');
-    return rest.join('.');
-  }
-
-  // If no dot, check if it's the internal state or custom state
-  try {
-    const decoded = JSON.parse(atob(state));
-    // If it has returnPathname, it's internal state only
-    if (decoded.returnPathname) {
-      return undefined;
-    }
-    // Otherwise it's custom state
-    return state;
-  } catch {
-    // If it's not valid JSON, treat it as custom state
-    return state;
-  }
-}
-
 function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   const url = new URL(originalUrl);
-
-  // Clean up OAuth params
   url.searchParams.delete('code');
   url.searchParams.delete('state');
 
-  // Handle pathname with query params
   if (returnPathname.includes('?')) {
     const targetUrl = new URL(returnPathname, url.origin);
     url.pathname = targetUrl.pathname;
-
-    targetUrl.searchParams.forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
+    targetUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
   } else {
     url.pathname = returnPathname;
   }
@@ -185,16 +134,15 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
-function extractSessionHeaders(response: any): Record<string, string> {
-  const headers: Record<string, string> = {};
-
-  // Handle nested response structure from authkit
-  const targetResponse = response?.response || response;
-  if (targetResponse?.headers) {
-    targetResponse.headers.forEach((value: string, key: string) => {
-      headers[key] = value;
-    });
+function extractSessionHeaders(result: any): Record<string, string> {
+  const setCookie = result?.response?.headers?.get?.('Set-Cookie');
+  if (setCookie) {
+    return { 'Set-Cookie': setCookie };
   }
 
-  return headers;
+  if (result?.headers && typeof result.headers === 'object') {
+    return result.headers;
+  }
+
+  return {};
 }

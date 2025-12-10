@@ -35,10 +35,10 @@ export function AuthKitProvider({ children, onSessionExpired, initialAuth }: Aut
   const [impersonator, setImpersonator] = useState<Impersonator | undefined>(initialProps.impersonator);
   const [loading, setLoading] = useState(initialAuth ? false : true);
 
-  const getAuth = useCallback(async ({ ensureSignedIn = false }: { ensureSignedIn?: boolean } = {}) => {
+  const getAuth = useCallback(async () => {
     setLoading(true);
     try {
-      const auth = await getAuthAction({ data: { ensureSignedIn } });
+      const auth = await getAuthAction();
       const props = getProps(auth);
       setUser(props.user);
       setSessionId(props.sessionId);
@@ -65,10 +65,10 @@ export function AuthKitProvider({ children, onSessionExpired, initialAuth }: Aut
   }, []);
 
   const refreshAuth = useCallback(
-    async ({ ensureSignedIn = false, organizationId }: { ensureSignedIn?: boolean; organizationId?: string } = {}) => {
+    async ({ organizationId }: { ensureSignedIn?: boolean; organizationId?: string } = {}) => {
       try {
         setLoading(true);
-        const auth = await refreshAuthAction({ data: { ensureSignedIn, organizationId } });
+        const auth = await refreshAuthAction({ data: { organizationId } });
         const props = getProps(auth);
         setUser(props.user);
         setSessionId(props.sessionId);

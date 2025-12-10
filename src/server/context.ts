@@ -35,9 +35,16 @@ export function getAuthKitContext(): AuthKitServerContext {
 }
 
 /**
- * Gets the AuthKit context if available, returns undefined otherwise.
+ * Gets the AuthKit context if available, returns null otherwise.
+ * Gracefully handles the case where TanStack Start context is not available
+ * (e.g., when called after args.next() returns in middleware).
  */
 export function getAuthKitContextOrNull(): AuthKitServerContext | null {
-  const ctx = getGlobalStartContext() as AuthKitServerContext | undefined;
-  return ctx?.auth ? ctx : null;
+  try {
+    const ctx = getGlobalStartContext() as AuthKitServerContext | undefined;
+    return ctx?.auth ? ctx : null;
+  } catch {
+    // Context not available (e.g., outside request lifecycle)
+    return null;
+  }
 }

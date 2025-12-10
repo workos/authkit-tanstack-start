@@ -44,10 +44,15 @@ export const authkitMiddleware = () => {
       },
     });
 
-    // Apply refreshed session cookie via storage's applyHeaders -> __setPendingHeader
-    // No need to manually append here as the storage already adds via context
+    // Apply refreshed session cookie. Context is unavailable after args.next(),
+    // so saveSession returns headers on the response instead of via context.
     if (refreshedSessionData) {
-      await authkit.saveSession(undefined, refreshedSessionData);
+      const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
+      // Extract Set-Cookie headers from response and add to pendingHeaders
+      const setCookieHeader = sessionResponse?.headers.get('Set-Cookie');
+      if (setCookieHeader) {
+        pendingHeaders.append('Set-Cookie', setCookieHeader);
+      }
     }
 
     const headerEntries = [...pendingHeaders];

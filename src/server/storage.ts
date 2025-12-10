@@ -16,10 +16,15 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     headers: Record<string, string>,
   ): Promise<{ response: Response }> {
     const ctx = getAuthKitContextOrNull();
+
+    // When middleware context is available, use it exclusively
     if (ctx?.__setPendingHeader) {
       Object.entries(headers).forEach(([key, value]) => ctx.__setPendingHeader(key, value));
+      return { response: response ?? new Response() };
     }
 
+    // Fallback: Context unavailable (e.g., after args.next() in middleware).
+    // Return headers on response - caller must extract and apply them.
     const newResponse = response
       ? new Response(response.body, {
           status: response.status,
@@ -29,7 +34,6 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
       : new Response();
 
     Object.entries(headers).forEach(([key, value]) => newResponse.headers.append(key, value));
-
     return { response: newResponse };
   }
 

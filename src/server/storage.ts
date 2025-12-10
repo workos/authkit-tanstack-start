@@ -1,5 +1,5 @@
 import { CookieSessionStorage } from '@workos/authkit-session';
-import { getGlobalStartContext } from '@tanstack/react-start';
+import { getAuthKitContextOrNull } from './context.js';
 
 export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Request, Response> {
   async getSession(request: Request): Promise<string | null> {
@@ -15,14 +15,9 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     response: Response | undefined,
     headers: Record<string, string>,
   ): Promise<{ response: Response }> {
-    try {
-      const globalContext = getGlobalStartContext() as any;
-      const setPendingHeader = globalContext?._setPendingHeader;
-      if (typeof setPendingHeader === 'function') {
-        Object.entries(headers).forEach(([key, value]) => setPendingHeader(key, value));
-      }
-    } catch {
-      // Not in a request context
+    const ctx = getAuthKitContextOrNull();
+    if (ctx?.__setPendingHeader) {
+      Object.entries(headers).forEach(([key, value]) => ctx.__setPendingHeader(key, value));
     }
 
     const newResponse = response

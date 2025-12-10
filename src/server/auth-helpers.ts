@@ -1,38 +1,22 @@
-import { getGlobalStartContext } from '@tanstack/react-start';
 import { getAuthkit } from './authkit-loader.js';
+import { getAuthKitContext, getAuthKitContextOrNull } from './context.js';
 import type { AuthResult } from '@workos/authkit-session';
 import type { User, Impersonator } from '../types.js';
-
-const MIDDLEWARE_NOT_CONFIGURED_ERROR =
-  'AuthKit middleware is not configured.\n\n' +
-  'Add authkitMiddleware() to your start.ts file:\n\n' +
-  "import { createStart } from '@tanstack/react-start';\n" +
-  "import { authkitMiddleware } from '@workos/authkit-tanstack-start';\n\n" +
-  'export const startInstance = createStart(() => ({\n' +
-  '  requestMiddleware: [authkitMiddleware()],\n' +
-  '}));';
 
 /**
  * Gets the raw auth result from the global context.
  * This is the core function that all other auth helpers use.
  */
 export function getRawAuthFromContext(): AuthResult<User> {
-  const globalContext = getGlobalStartContext() as any;
-  const authFn = globalContext?.auth;
-
-  if (!authFn) {
-    throw new Error(MIDDLEWARE_NOT_CONFIGURED_ERROR);
-  }
-
-  return authFn();
+  const ctx = getAuthKitContext();
+  return ctx.auth();
 }
 
 /**
  * Checks if auth middleware is configured.
  */
 export function isAuthConfigured(): boolean {
-  const globalContext = getGlobalStartContext() as any;
-  return !!globalContext?.auth;
+  return getAuthKitContextOrNull() !== null;
 }
 
 /**
@@ -51,15 +35,9 @@ export async function getSessionWithRefreshToken(): Promise<{
     return null;
   }
 
-  const globalContext = getGlobalStartContext() as any;
-  const request = globalContext?.request;
-
-  if (!request) {
-    throw new Error('Request not found in context. Ensure authkitMiddleware() is configured.');
-  }
-
+  const ctx = getAuthKitContext();
   const authkit = await getAuthkit();
-  const session = await authkit.getSession(request);
+  const session = await authkit.getSession(ctx.request);
 
   if (!session?.refreshToken) {
     return null;

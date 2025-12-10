@@ -33,7 +33,7 @@ export const authkitMiddleware = () => {
       context: {
         auth: () => auth,
         request: args.request,
-        _setPendingHeader: (key: string, value: string) => {
+        __setPendingHeader: (key: string, value: string) => {
           pendingHeaders[key] = value;
         },
       },

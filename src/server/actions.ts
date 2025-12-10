@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRawAuthFromContext, isAuthConfigured, refreshSession } from './auth-helpers.js';
-import type { NoUserInfo, UserInfo } from './server-functions.js';
+import type { ClientUserInfo, NoUserInfo, UserInfo } from './server-functions.js';
 
 function sanitizeAuthForClient(auth: any): Omit<UserInfo, 'accessToken'> | NoUserInfo {
   if (!auth.user) {
@@ -40,18 +40,16 @@ export const checkSessionAction = createServerFn({ method: 'GET' }).handler(() =
  * Get authentication context. Sanitized for client use (no access token).
  * Can be used to seed the AuthKitProvider with the initial authentication state.
  */
-export const getAuthAction = createServerFn({ method: 'GET' })
-  .inputValidator((options?: { ensureSignedIn?: boolean }) => options)
-  .handler(({ data: options }): Omit<UserInfo, 'accessToken'> | NoUserInfo => {
-    const auth = getRawAuthFromContext();
-    return sanitizeAuthForClient(auth);
-  });
+export const getAuthAction = createServerFn({ method: 'GET' }).handler((): ClientUserInfo | NoUserInfo => {
+  const auth = getRawAuthFromContext();
+  return sanitizeAuthForClient(auth);
+});
 
 /**
  * Refresh authentication session. Sanitized for client use (no access token).
  */
 export const refreshAuthAction = createServerFn({ method: 'POST' })
-  .inputValidator((options?: { ensureSignedIn?: boolean; organizationId?: string }) => options)
+  .inputValidator((options?: { organizationId?: string }) => options)
   .handler(async ({ data: options }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
     const result = await refreshSession(options?.organizationId);
 

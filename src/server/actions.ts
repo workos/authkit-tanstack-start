@@ -2,14 +2,6 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRawAuthFromContext, isAuthConfigured, refreshSession } from './auth-helpers.js';
 import type { UserInfo, NoUserInfo } from './server-functions.js';
 
-/**
- * Server actions for client-side hooks.
- * These mirror the Next.js actions API but use TanStack Start's server functions.
- */
-
-/**
- * Converts raw auth to sanitized UserInfo (without access token).
- */
 function sanitizeAuthForClient(auth: any): Omit<UserInfo, 'accessToken'> | NoUserInfo {
   if (!auth.user) {
     return { user: null };
@@ -17,7 +9,7 @@ function sanitizeAuthForClient(auth: any): Omit<UserInfo, 'accessToken'> | NoUse
 
   return {
     user: auth.user,
-    sessionId: auth.sessionId!,
+    sessionId: auth.sessionId,
     organizationId: auth.claims?.org_id,
     role: auth.claims?.role,
     roles: auth.claims?.roles,

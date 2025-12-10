@@ -79,10 +79,7 @@ export const signOut = createServerFn({ method: 'POST' })
     });
   });
 
-/**
- * Internal function to get auth from context (server-only).
- * Used by other server functions and the public getAuth server function.
- */
+/** Internal function to get auth from context (server-only). */
 export function getAuthFromContext(): UserInfo | NoUserInfo {
   const auth = getRawAuthFromContext();
 
@@ -187,18 +184,11 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  * Switch the active organization for the current session.
  * Refreshes the session with organization-specific claims (role, permissions, etc).
  *
- * @param organizationId - The ID of the organization to switch to
- * @param options - Optional configuration
- * @returns The updated authentication context with new organization claims
- *
  * @example
  * ```typescript
  * import { switchToOrganization } from '@workos/authkit-tanstack-start';
  *
- * // In a server function or route loader
- * const auth = await switchToOrganization({
- *   data: { organizationId: 'org_123' }
- * });
+ * const auth = await switchToOrganization({ data: { organizationId: 'org_123' } });
  * ```
  */
 export const switchToOrganization = createServerFn({ method: 'POST' })
@@ -206,13 +196,13 @@ export const switchToOrganization = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<UserInfo> => {
     const auth = getAuthFromContext();
 
-    if (!auth.user || !auth.accessToken) {
+    if (!auth.user) {
       throw redirect({ to: data.returnTo || '/' });
     }
 
     const result = await refreshSession(data.organizationId);
 
-    if (!result || !result.user) {
+    if (!result?.user) {
       throw redirect({ to: data.returnTo || '/' });
     }
 

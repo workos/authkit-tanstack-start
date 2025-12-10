@@ -1,5 +1,5 @@
 import { getGlobalStartContext } from '@tanstack/react-start';
-import { getAuthkit, getServerRequest } from './authkit-loader.js';
+import { getAuthkit } from './authkit-loader.js';
 import type { AuthResult } from '@workos/authkit-session';
 import type { User, Impersonator } from '../types.js';
 
@@ -51,7 +51,14 @@ export async function getSessionWithRefreshToken(): Promise<{
     return null;
   }
 
-  const [request, authkit] = await Promise.all([getServerRequest(), getAuthkit()]);
+  const globalContext = getGlobalStartContext() as any;
+  const request = globalContext?.request;
+
+  if (!request) {
+    throw new Error('Request not found in context. Ensure authkitMiddleware() is configured.');
+  }
+
+  const authkit = await getAuthkit();
   const session = await authkit.getSession(request);
 
   if (!session?.refreshToken) {
@@ -88,7 +95,6 @@ export async function refreshSession(organizationId?: string) {
     organizationId,
   );
 
-  // Persist the refreshed session if needed
   if (encryptedSession) {
     await authkit.saveSession(undefined, encryptedSession);
   }
@@ -98,44 +104,23 @@ export async function refreshSession(organizationId?: string) {
 
 /**
  * Decodes a state parameter from OAuth callback.
+ * Format: base64EncodedInternal.customUserState (dot-separated)
  */
 export function decodeState(state: string | null): { returnPathname: string; customState?: string } {
-  const defaultReturn = { returnPathname: '/', customState: undefined };
-
   if (!state || state === 'null') {
-    return defaultReturn;
+    return { returnPathname: '/' };
   }
 
-  // State can have custom user data after a dot separator
-  // Format: base64EncodedInternal.customUserState
-  if (state.includes('.')) {
-    const [internal, ...rest] = state.split('.');
-    const customState = rest.join('.');
+  const [internal, ...rest] = state.split('.');
+  const customState = rest.length > 0 ? rest.join('.') : undefined;
 
-    // Try to decode the internal part
-    try {
-      const decoded = JSON.parse(atob(internal));
-      if (decoded.returnPathname) {
-        return { returnPathname: decoded.returnPathname, customState };
-      }
-      return { returnPathname: '/', customState };
-    } catch {
-      // If internal part isn't valid base64/json, treat everything after first dot as custom
-      return { returnPathname: '/', customState };
-    }
-  }
-
-  // No dot separator - try to decode as internal state
   try {
-    const decoded = JSON.parse(atob(state));
-    // If it has returnPathname, it's internal state only
-    if (decoded.returnPathname) {
-      return { returnPathname: decoded.returnPathname, customState: undefined };
-    }
-    // Otherwise it's custom state
-    return { returnPathname: '/', customState: state };
+    const decoded = JSON.parse(atob(internal));
+    return {
+      returnPathname: decoded.returnPathname || '/',
+      customState,
+    };
   } catch {
-    // If it's not valid base64/JSON, treat it as custom state
-    return { returnPathname: '/', customState: state };
+    return { returnPathname: '/', customState: customState ?? state };
   }
 }

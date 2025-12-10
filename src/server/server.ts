@@ -118,24 +118,15 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   }
 }
 
-/**
- * Builds the redirect URL after OAuth callback.
- */
 function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   const url = new URL(originalUrl);
-
-  // Clean up OAuth params
   url.searchParams.delete('code');
   url.searchParams.delete('state');
 
-  // Handle pathname with query params
   if (returnPathname.includes('?')) {
     const targetUrl = new URL(returnPathname, url.origin);
     url.pathname = targetUrl.pathname;
-
-    targetUrl.searchParams.forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
+    targetUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
   } else {
     url.pathname = returnPathname;
   }

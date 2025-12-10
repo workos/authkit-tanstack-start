@@ -27,26 +27,31 @@ export const authkitMiddleware = () => {
     }
 
     const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
-    const pendingHeaders: Record<string, string> = {};
+    const pendingHeaders = new Headers();
 
     const result = await args.next({
       context: {
         auth: () => auth,
         request: args.request,
         __setPendingHeader: (key: string, value: string) => {
-          pendingHeaders[key] = value;
+          // Use append for Set-Cookie to support multiple cookies
+          if (key.toLowerCase() === 'set-cookie') {
+            pendingHeaders.append(key, value);
+          } else {
+            pendingHeaders.set(key, value);
+          }
         },
       },
     });
 
+    // Apply refreshed session cookie via storage's applyHeaders -> __setPendingHeader
+    // No need to manually append here as the storage already adds via context
     if (refreshedSessionData) {
-      const { headers } = await authkit.saveSession(undefined, refreshedSessionData);
-      if (headers?.['Set-Cookie']) {
-        pendingHeaders['Set-Cookie'] = headers['Set-Cookie'] as string;
-      }
+      await authkit.saveSession(undefined, refreshedSessionData);
     }
 
-    if (Object.keys(pendingHeaders).length === 0) {
+    const headerEntries = [...pendingHeaders];
+    if (headerEntries.length === 0) {
       return result;
     }
 
@@ -56,8 +61,13 @@ export const authkitMiddleware = () => {
       headers: result.response.headers,
     });
 
-    for (const [key, value] of Object.entries(pendingHeaders)) {
-      newResponse.headers.set(key, value);
+    for (const [key, value] of headerEntries) {
+      // Use append for Set-Cookie to preserve multiple cookie values
+      if (key.toLowerCase() === 'set-cookie') {
+        newResponse.headers.append(key, value);
+      } else {
+        newResponse.headers.set(key, value);
+      }
     }
 
     return { ...result, response: newResponse };

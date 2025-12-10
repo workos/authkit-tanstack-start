@@ -77,6 +77,7 @@ vi.mock('@tanstack/react-start', () => ({
   }),
   getGlobalStartContext: () => ({
     auth: mockAuthContext,
+    request: new Request('http://test.local'),
   }),
 }));
 

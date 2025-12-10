@@ -11,14 +11,19 @@ export interface AuthKitServerContext {
   __setPendingHeader: (key: string, value: string) => void;
 }
 
-const MIDDLEWARE_NOT_CONFIGURED_ERROR =
-  'AuthKit middleware is not configured.\n\n' +
-  'Add authkitMiddleware() to your start.ts file:\n\n' +
-  "import { createStart } from '@tanstack/react-start';\n" +
-  "import { authkitMiddleware } from '@workos/authkit-tanstack-start';\n\n" +
-  'export const startInstance = createStart(() => ({\n' +
-  '  requestMiddleware: [authkitMiddleware()],\n' +
-  '}));';
+const MIDDLEWARE_NOT_CONFIGURED_ERROR = `AuthKit middleware is not configured.
+
+Add authkitMiddleware() to your app.tsx file:
+
+import { authkitMiddleware } from '@workos/authkit-tanstack-start';
+
+export default createRouter({
+  routeTree,
+  context: { ... },
+  middleware: [authkitMiddleware()],
+});
+
+See the documentation for more details: https://github.com/workos/authkit-tanstack-start`;
 
 /**
  * Gets the AuthKit context from TanStack's global context.
@@ -27,7 +32,8 @@ const MIDDLEWARE_NOT_CONFIGURED_ERROR =
 export function getAuthKitContext(): AuthKitServerContext {
   const ctx = getGlobalStartContext() as AuthKitServerContext | undefined;
 
-  if (!ctx?.auth) {
+  // Validate that both auth and request are present (ensures middleware ran correctly)
+  if (!ctx?.auth || !ctx?.request) {
     throw new Error(MIDDLEWARE_NOT_CONFIGURED_ERROR);
   }
 
@@ -42,7 +48,8 @@ export function getAuthKitContext(): AuthKitServerContext {
 export function getAuthKitContextOrNull(): AuthKitServerContext | null {
   try {
     const ctx = getGlobalStartContext() as AuthKitServerContext | undefined;
-    return ctx?.auth ? ctx : null;
+    // Validate that both auth and request are present
+    return ctx?.auth && ctx?.request ? ctx : null;
   } catch {
     // Context not available (e.g., outside request lifecycle)
     return null;

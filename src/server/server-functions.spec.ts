@@ -268,6 +268,118 @@ describe('Server Functions', () => {
       expect(result).toBe(signUpUrl);
       expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/welcome' });
     });
+
+    it('accepts object with returnPathname', async () => {
+      const signUpUrl = 'https://auth.workos.com/sign-up';
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
+
+      const result = await serverFunctions.getSignUpUrl({ data: { returnPathname: '/onboarding' } });
+
+      expect(result).toBe(signUpUrl);
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/onboarding' });
+    });
+  });
+
+  describe('signOut headers handling', () => {
+    it('handles array header values', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+      });
+
+      mockAuthkit.signOut.mockResolvedValue({
+        logoutUrl: 'https://auth.workos.com/logout',
+        headers: {
+          'Set-Cookie': ['cookie1=value1', 'cookie2=value2'],
+        },
+      });
+
+      try {
+        await serverFunctions.signOut({ data: {} });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        // Verify array headers were appended
+        expect(error.options.headers.get('Set-Cookie')).toContain('cookie1=value1');
+      }
+    });
+  });
+
+  describe('switchToOrganization', () => {
+    it('redirects when no user in auth context', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/');
+      }
+    });
+
+    it('redirects with returnTo when no user', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123', returnTo: '/login' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/login');
+      }
+    });
+
+    it('redirects when refresh returns no user', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+        accessToken: 'token',
+      });
+
+      // Mock refreshSession to return null
+      const authHelpers = await import('./auth-helpers');
+      vi.spyOn(authHelpers, 'refreshSession').mockResolvedValue(null);
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123' } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/');
+      }
+    });
+
+    it('returns user info on successful switch', async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+        accessToken: 'token',
+      });
+
+      const authHelpers = await import('./auth-helpers');
+      vi.spyOn(authHelpers, 'refreshSession').mockResolvedValue({
+        user: { id: 'user_123', email: 'test@example.com' },
+        sessionId: 'new_session',
+        accessToken: 'new_token',
+        claims: {
+          org_id: 'org_456',
+          role: 'admin',
+          roles: ['admin'],
+          permissions: ['read', 'write'],
+          entitlements: ['premium'],
+          feature_flags: ['beta'],
+        },
+        impersonator: undefined,
+      } as any);
+
+      const result = await serverFunctions.switchToOrganization({ data: { organizationId: 'org_456' } });
+
+      expect(result.user).toEqual({ id: 'user_123', email: 'test@example.com' });
+      expect(result.organizationId).toBe('org_456');
+      expect(result.role).toBe('admin');
+      expect(result.permissions).toEqual(['read', 'write']);
+    });
   });
 
   describe('exported types', () => {

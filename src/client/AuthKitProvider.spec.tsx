@@ -320,4 +320,194 @@ describe('AuthKitProvider', () => {
       expect(callCount).toBeGreaterThan(1);
     });
   });
+
+  it('updates state when switchToOrganization succeeds', async () => {
+    const { getAuthAction, switchToOrganizationAction } = await import('../server/actions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({
+      user: mockUser,
+      sessionId: 'session_123',
+    });
+
+    vi.mocked(switchToOrganizationAction).mockResolvedValue({
+      user: mockUser,
+      sessionId: 'new_session',
+      organizationId: 'org_456',
+      role: 'admin',
+      roles: ['admin'],
+      permissions: ['write'],
+      entitlements: ['premium'],
+      featureFlags: ['beta'],
+      impersonator: { email: 'admin@test.com' },
+    });
+
+    const TestComponent = () => {
+      const { switchToOrganization, organizationId } = useAuth();
+      return (
+        <div>
+          <div data-testid="org">{organizationId || 'no-org'}</div>
+          <button onClick={() => switchToOrganization('org_456')}>Switch</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('org')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Switch'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('org').textContent).toBe('org_456');
+    });
+  });
+
+  it('clears state when switchToOrganization returns no user', async () => {
+    const { getAuthAction, switchToOrganizationAction } = await import('../server/actions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({
+      user: mockUser,
+      sessionId: 'session_123',
+      organizationId: 'org_123',
+    });
+
+    vi.mocked(switchToOrganizationAction).mockResolvedValue({ user: null });
+
+    const TestComponent = () => {
+      const { switchToOrganization, user, organizationId } = useAuth();
+      return (
+        <div>
+          <div data-testid="user">{user ? 'has-user' : 'no-user'}</div>
+          <div data-testid="org">{organizationId || 'no-org'}</div>
+          <button onClick={() => switchToOrganization('bad_org')}>Switch</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('has-user');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Switch'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('no-user');
+    });
+  });
+
+  it('handles switchToOrganization errors', async () => {
+    const { getAuthAction, switchToOrganizationAction } = await import('../server/actions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
+    vi.mocked(switchToOrganizationAction).mockRejectedValue(new Error('Switch failed'));
+
+    const TestComponent = () => {
+      const { switchToOrganization } = useAuth();
+      return <button onClick={() => switchToOrganization('org_123')}>Switch</button>;
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Switch')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Switch'));
+    });
+  });
+
+  it('handles signOut with internal redirect', async () => {
+    const { getAuthAction } = await import('../server/actions');
+    const { signOut } = await import('../server/server-functions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
+
+    const mockResponse = new Response(null, {
+      status: 302,
+      headers: { Location: '/dashboard' },
+    });
+    vi.mocked(signOut).mockRejectedValue(mockResponse);
+
+    const mockNavigate = vi.fn();
+    vi.mocked(await import('@tanstack/react-router')).useNavigate = () => mockNavigate;
+
+    const TestComponent = () => {
+      const { signOut: handleSignOut } = useAuth();
+      return <button onClick={() => handleSignOut()}>Sign Out</button>;
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Sign Out')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Sign Out'));
+    });
+  });
+
+  it('rethrows non-Response errors from signOut', async () => {
+    const { getAuthAction } = await import('../server/actions');
+    const { signOut } = await import('../server/server-functions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
+    vi.mocked(signOut).mockRejectedValue(new Error('Network error'));
+
+    const TestComponent = () => {
+      const { signOut: handleSignOut } = useAuth();
+      return (
+        <button
+          onClick={async () => {
+            try {
+              await handleSignOut();
+            } catch {
+              // Expected
+            }
+          }}
+        >
+          Sign Out
+        </button>
+      );
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Sign Out')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Sign Out'));
+    });
+  });
 });

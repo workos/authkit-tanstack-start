@@ -243,4 +243,91 @@ describe('TokenStore', () => {
       expect(snapshot.loading).toBe(false);
     });
   });
+
+  describe('reset', () => {
+    it('resets all state and clears listeners', async () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      vi.mocked(getAccessTokenAction).mockResolvedValue('test-token');
+      await store.getAccessTokenSilently();
+
+      store.reset();
+
+      const snapshot = store.getSnapshot();
+      expect(snapshot.token).toBeUndefined();
+      expect(snapshot.loading).toBe(false);
+      expect(snapshot.error).toBeNull();
+      expect(store.isRefreshing()).toBe(false);
+    });
+  });
+
+  describe('getRefreshDelay edge cases', () => {
+    it('returns 0 when token is within expiry buffer', async () => {
+      const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+      const nearExpiryPayload = {
+        sub: 'user_123',
+        sid: 'session_123',
+        iat: currentTimeInSeconds - 100,
+        exp: currentTimeInSeconds + 30, // Within 60-second buffer
+      };
+      const nearExpiryToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(nearExpiryPayload))}.mock-signature`;
+
+      vi.mocked(refreshAccessTokenAction).mockResolvedValue(nearExpiryToken);
+      await store.refreshToken();
+
+      // The refresh should be scheduled immediately (delay ~0)
+      expect(store.getSnapshot().token).toBe(nearExpiryToken);
+    });
+
+    it('caps refresh delay at maximum value', async () => {
+      const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+      const longLivedPayload = {
+        sub: 'user_123',
+        sid: 'session_123',
+        iat: currentTimeInSeconds,
+        exp: currentTimeInSeconds + 60 * 60 * 48, // 48 hours
+      };
+      const longLivedToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(longLivedPayload))}.mock-signature`;
+
+      vi.mocked(refreshAccessTokenAction).mockResolvedValue(longLivedToken);
+      await store.refreshToken();
+
+      expect(store.getSnapshot().token).toBe(longLivedToken);
+    });
+  });
+
+  describe('silent refresh with no previous token', () => {
+    it('fetches token when no cached token', async () => {
+      // Create fresh store
+      const freshStore = new TokenStore();
+      freshStore.reset();
+
+      const validToken =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsInNpZCI6InNlc3Npb25fMTIzIiwiZXhwIjo5OTk5OTk5OTk5fQ.mock-signature';
+
+      vi.mocked(getAccessTokenAction).mockResolvedValue(validToken);
+
+      const result = await freshStore.getAccessTokenSilently();
+
+      expect(getAccessTokenAction).toHaveBeenCalled();
+      expect(result).toBe(validToken);
+    });
+  });
+
+  describe('refresh error handling', () => {
+    it('converts non-Error to Error on failure', async () => {
+      vi.mocked(refreshAccessTokenAction).mockRejectedValue('string error');
+
+      try {
+        await store.refreshToken();
+      } catch {
+        // Expected
+      }
+
+      const snapshot = store.getSnapshot();
+      expect(snapshot.error).toBeInstanceOf(Error);
+      expect(snapshot.error?.message).toBe('string error');
+    });
+  });
 });

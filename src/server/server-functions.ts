@@ -23,6 +23,8 @@ export interface UserInfo {
   accessToken: string;
 }
 
+export interface ClientUserInfo extends Omit<UserInfo, 'accessToken'> {}
+
 export interface NoUserInfo {
   user: null;
 }

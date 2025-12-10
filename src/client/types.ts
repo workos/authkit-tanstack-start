@@ -1,3 +1,4 @@
+import { ClientUserInfo, NoUserInfo } from '../server/server-functions.js';
 import type { User, Impersonator } from '../types.js';
 
 export interface AuthContextType {
@@ -24,6 +25,12 @@ export interface AuthKitProviderProps {
    * You can also pass this as `false` to disable the expired session checks.
    */
   onSessionExpired?: false | (() => void);
+  /**
+   * Initial authentication state to use for the provider.
+   * This is useful for pre-loading the authentication state for the provider
+   * in a loader to avoid loading state flickering.
+   */
+  initialAuth?: ClientUserInfo | NoUserInfo;
 }
 
 export interface UseAccessTokenReturn {

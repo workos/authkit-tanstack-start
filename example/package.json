@@ -16,14 +16,14 @@
   "license": "MIT",
   "dependencies": {
     "@radix-ui/themes": "^3.2.1",
-    "@tanstack/react-router": "^1.140.0",
-    "@tanstack/react-router-devtools": "^1.140.0",
-    "@tanstack/react-start": "^1.140.0",
     "@workos/authkit-tanstack-react-start": "workspace:*",
+    "@tanstack/react-router": "^1.141.2",
+    "@tanstack/react-router-devtools": "^1.141.2",
+    "@tanstack/react-start": "^1.141.2",
     "iron-session": "^8.0.4",
     "jose": "^6.1.3",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",

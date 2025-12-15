@@ -82,8 +82,8 @@ importers:
         specifier: ^1.141.2
         version: 1.141.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@20.19.27)(tsx@4.21.0))
       '@workos/authkit-tanstack-react-start':
-        specifier: file:../workos-authkit-tanstack-react-start-0.2.0.tgz
-        version: file:workos-authkit-tanstack-react-start-0.2.0.tgz(@tanstack/react-router@1.141.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@tanstack/react-start@1.141.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@20.19.27)(tsx@4.21.0)))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: workspace:*
+        version: link:..
       iron-session:
         specifier: ^8.0.4
         version: 8.0.4
@@ -1567,16 +1567,6 @@ packages:
   '@workos/authkit-session@0.3.2':
     resolution: {integrity: sha512-+uTD+5S+5CeM/vpSXRP8rLtxx7pmI6RtO/d+Q0v+ITkTmNNoPIaWvXAYIAtV08qmIlHLO40UM6hoQSmEoDWifQ==}
     engines: {node: '>=20.0.0'}
-
-  '@workos/authkit-tanstack-react-start@file:workos-authkit-tanstack-react-start-0.2.0.tgz':
-    resolution: {integrity: sha512-QVwE+cx4BSmvN398aaJgHXVlANdGWksk1FkGSqHKKNI63r5zGzoT7y4tWRu0oGPrqZt+4S+EVNBSY/zG/d1wZQ==, tarball: file:workos-authkit-tanstack-react-start-0.2.0.tgz}
-    version: 0.2.0
-    engines: {node: '>=20.0.0'}
-    peerDependencies:
-      '@tanstack/react-router': '>=1.0.0'
-      '@tanstack/react-start': '>=1.0.0'
-      react: ^18.0 || ^19.0
-      react-dom: ^18.0 || ^19.0
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -4111,14 +4101,6 @@ snapshots:
       '@workos-inc/node': 8.0.0-rc.5
       iron-webcrypto: 2.0.0
       jose: 6.1.3
-
-  '@workos/authkit-tanstack-react-start@file:workos-authkit-tanstack-react-start-0.2.0.tgz(@tanstack/react-router@1.141.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@tanstack/react-start@1.141.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@20.19.27)(tsx@4.21.0)))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@tanstack/react-router': 1.141.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tanstack/react-start': 1.141.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@20.19.27)(tsx@4.21.0))
-      '@workos/authkit-session': 0.3.2
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
 
   acorn@8.15.0: {}
 

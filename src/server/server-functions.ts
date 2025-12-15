@@ -1,7 +1,7 @@
 import { redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import type { Impersonator, User } from '../types.js';
-import { getRawAuthFromContext, refreshSession } from './auth-helpers.js';
+import { getRawAuthFromContext, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
 
 // Type-only import - safe for bundling
@@ -159,7 +159,11 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
-    return authkit.getAuthorizationUrl(options);
+    const contextRedirectUri = getRedirectUriFromContext();
+    return authkit.getAuthorizationUrl({
+      ...options,
+      redirectUri: options.redirectUri ?? contextRedirectUri,
+    });
   });
 
 /** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
@@ -185,7 +189,17 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
+    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
+
+    // Only inject context redirectUri if it exists and user didn't provide one
+    if (contextRedirectUri && !options?.redirectUri) {
+      return authkit.getSignInUrl({
+        ...options,
+        redirectUri: contextRedirectUri,
+      });
+    }
+
     return authkit.getSignInUrl(options);
   });
 
@@ -209,7 +223,17 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
+    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
+
+    // Only inject context redirectUri if it exists and user didn't provide one
+    if (contextRedirectUri && !options?.redirectUri) {
+      return authkit.getSignUpUrl({
+        ...options,
+        redirectUri: contextRedirectUri,
+      });
+    }
+
     return authkit.getSignUpUrl(options);
   });
 

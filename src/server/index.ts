@@ -13,7 +13,7 @@ export {
 export { handleCallbackRoute } from './server.js';
 export type { HandleCallbackOptions, HandleAuthSuccessData, OauthTokens } from './types.js';
 
-export { authkitMiddleware } from './middleware.js';
+export { authkitMiddleware, type AuthKitMiddlewareOptions } from './middleware.js';
 
 export { getAuthkit, type AuthService } from './authkit-loader.js';
 

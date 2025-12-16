@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { checkSessionAction, getAuthAction, refreshAuthAction, switchToOrganizationAction } from '../server/actions.js';
-import { ClientUserInfo, NoUserInfo, signOut } from '../server/server-functions.js';
+import { ClientUserInfo, NoUserInfo, getSignOutUrl } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
 import type { User, Impersonator } from '../types.js';
 
@@ -89,32 +89,13 @@ export function AuthKitProvider({ children, onSessionExpired, initialAuth }: Aut
   );
 
   const handleSignOut = useCallback(
-    async ({ returnTo }: { returnTo?: string } = {}) => {
-      try {
-        await signOut({ data: { returnTo } });
-      } catch (error) {
-        // Server function throws redirect - extract URL and navigate appropriately
-        if (error instanceof Response) {
-          const location = error.headers.get('Location');
-          if (location) {
-            try {
-              const url = new URL(location, window.location.origin);
-              if (url.origin === window.location.origin) {
-                // Internal routes use TanStack Router navigation with path only
-                const path = url.pathname + url.search + url.hash;
-                navigate({ to: path });
-              } else {
-                // External OAuth/logout URL requires full page navigation
-                window.location.href = location;
-              }
-            } catch {
-              // Invalid URL - use TanStack Router navigation as-is (for relative paths)
-              navigate({ to: location });
-            }
-            return;
-          }
-        }
-        throw error;
+    async ({ returnTo = '/' }: { returnTo?: string } = {}) => {
+      const result = await getSignOutUrl({ data: { returnTo } });
+
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        navigate({ to: returnTo });
       }
     },
     [navigate],

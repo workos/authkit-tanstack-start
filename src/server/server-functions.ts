@@ -29,15 +29,37 @@ export interface NoUserInfo {
   user: null;
 }
 
+/** Internal: Returns logout URL for client-side sign out. */
+export const getSignOutUrl = createServerFn({ method: 'POST' })
+  .inputValidator((options?: { returnTo?: string }) => options)
+  .handler(async ({ data }): Promise<{ url: string | null }> => {
+    const auth = getAuthFromContext();
+
+    if (!auth.user || !auth.sessionId) {
+      return { url: null };
+    }
+
+    const authkit = await getAuthkit();
+    const { logoutUrl } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
+
+    return { url: logoutUrl };
+  });
+
 /**
  * Signs out the current user by terminating their session.
+ * Best used in route loaders where redirect handling works properly.
+ * For client-side button handlers, use the signOut from useAuth() hook instead.
  *
  * @example
  * ```typescript
  * import { signOut } from '@workos/authkit-tanstack-start';
  *
- * // In a server function or route
- * await signOut({ returnTo: '/' });
+ * // In a route loader
+ * export const Route = createFileRoute('/logout')({
+ *   loader: async () => {
+ *     await signOut();
+ *   },
+ * });
  * ```
  */
 export const signOut = createServerFn({ method: 'POST' })

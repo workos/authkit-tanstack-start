@@ -11,7 +11,7 @@ vi.mock('../server/actions', () => ({
 }));
 
 vi.mock('../server/server-functions', () => ({
-  signOut: vi.fn(),
+  getSignOutUrl: vi.fn(),
 }));
 
 // Mock TanStack Router hooks to avoid warnings
@@ -188,35 +188,50 @@ describe('AuthKitProvider', () => {
     });
   });
 
-  it('calls signOut', async () => {
+  it('calls signOut and redirects to logout URL', async () => {
     const { getAuthAction } = await import('../server/actions');
-    const { signOut } = await import('../server/server-functions');
+    const { getSignOutUrl } = await import('../server/server-functions');
 
     vi.mocked(getAuthAction).mockResolvedValue({
       user: mockUser,
       sessionId: 'session_123',
     });
 
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return <button onClick={() => handleSignOut({ returnTo: '/home' })}>Sign Out</button>;
-    };
+    // Mock getSignOutUrl to return a logout URL
+    vi.mocked(getSignOutUrl).mockResolvedValue({ url: 'https://auth.workos.com/logout' });
 
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
+    // Mock window.location.href
+    const originalLocation = window.location;
+    // @ts-expect-error - mocking window.location
+    delete window.location;
+    window.location = { ...originalLocation, href: '' };
 
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
-    });
+    try {
+      const TestComponent = () => {
+        const { signOut: handleSignOut } = useAuth();
+        return <button onClick={() => handleSignOut({ returnTo: '/home' })}>Sign Out</button>;
+      };
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+      render(
+        <AuthKitProvider>
+          <TestComponent />
+        </AuthKitProvider>,
+      );
 
-    expect(signOut).toHaveBeenCalledWith({ data: { returnTo: '/home' } });
+      await waitFor(() => {
+        expect(screen.getByText('Sign Out')).toBeDefined();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sign Out'));
+      });
+
+      expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/home' } });
+      expect(window.location.href).toBe('https://auth.workos.com/logout');
+    } finally {
+      // Restore window.location
+      window.location = originalLocation;
+    }
   });
 
   it('handles auth errors gracefully', async () => {
@@ -338,7 +353,10 @@ describe('AuthKitProvider', () => {
       permissions: ['write'],
       entitlements: ['premium'],
       featureFlags: ['beta'],
-      impersonator: { email: 'admin@test.com' },
+      impersonator: {
+        reason: 'reason',
+        email: 'admin@test.com',
+      },
     });
 
     const TestComponent = () => {
@@ -437,20 +455,51 @@ describe('AuthKitProvider', () => {
     });
   });
 
-  it('handles signOut with internal redirect', async () => {
+  it('handles signOut when no session exists (navigates to returnTo)', async () => {
     const { getAuthAction } = await import('../server/actions');
-    const { signOut } = await import('../server/server-functions');
+    const { getSignOutUrl } = await import('../server/server-functions');
 
     vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
 
-    const mockResponse = new Response(null, {
-      status: 302,
-      headers: { Location: '/dashboard' },
-    });
-    vi.mocked(signOut).mockRejectedValue(mockResponse);
+    // Mock getSignOutUrl to return null URL (no session to terminate)
+    vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
 
     const mockNavigate = vi.fn();
-    vi.mocked(await import('@tanstack/react-router')).useNavigate = () => mockNavigate;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
+
+    const TestComponent = () => {
+      const { signOut: handleSignOut } = useAuth();
+      return <button onClick={() => handleSignOut({ returnTo: '/login' })}>Sign Out</button>;
+    };
+
+    render(
+      <AuthKitProvider>
+        <TestComponent />
+      </AuthKitProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Sign Out')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Sign Out'));
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' });
+  });
+
+  it('uses default returnTo when signOut called without options', async () => {
+    const { getAuthAction } = await import('../server/actions');
+    const { getSignOutUrl } = await import('../server/server-functions');
+
+    vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
+    vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
+
+    const mockNavigate = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
 
     const TestComponent = () => {
       const { signOut: handleSignOut } = useAuth();
@@ -470,44 +519,9 @@ describe('AuthKitProvider', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Sign Out'));
     });
-  });
 
-  it('rethrows non-Response errors from signOut', async () => {
-    const { getAuthAction } = await import('../server/actions');
-    const { signOut } = await import('../server/server-functions');
-
-    vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
-    vi.mocked(signOut).mockRejectedValue(new Error('Network error'));
-
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return (
-        <button
-          onClick={async () => {
-            try {
-              await handleSignOut();
-            } catch {
-              // Expected
-            }
-          }}
-        >
-          Sign Out
-        </button>
-      );
-    };
-
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+    // Default returnTo is '/'
+    expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/' } });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
   });
 });

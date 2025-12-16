@@ -4,6 +4,17 @@ import { getAuthkit, validateConfig } from './authkit-loader.js';
 let configValidated = false;
 
 /**
+ * Options for AuthKit middleware.
+ */
+export interface AuthKitMiddlewareOptions {
+  /**
+   * Override the default redirect URI for OAuth callbacks.
+   * Useful for dynamic environments like Vercel preview deployments.
+   */
+  redirectUri?: string;
+}
+
+/**
  * AuthKit middleware for TanStack Start.
  * Validates/refreshes sessions and provides auth context to downstream handlers.
  *
@@ -16,8 +27,16 @@ let configValidated = false;
  *   requestMiddleware: [authkitMiddleware()],
  * }));
  * ```
+ *
+ * @example
+ * ```typescript
+ * // With custom redirect URI
+ * authkitMiddleware({
+ *   redirectUri: 'https://preview.example.com/callback',
+ * })
+ * ```
  */
-export const authkitMiddleware = () => {
+export const authkitMiddleware = (options?: AuthKitMiddlewareOptions) => {
   return createMiddleware().server(async (args) => {
     const authkit = await getAuthkit();
 
@@ -33,6 +52,7 @@ export const authkitMiddleware = () => {
       context: {
         auth: () => auth,
         request: args.request,
+        redirectUri: options?.redirectUri,
         __setPendingHeader: (key: string, value: string) => {
           // Use append for Set-Cookie to support multiple cookies
           if (key.toLowerCase() === 'set-cookie') {

@@ -220,4 +220,56 @@ describe('authkitMiddleware', () => {
       expect(result.response.headers.get('X-New')).toBe('added');
     });
   });
+
+  describe('redirectUri option', () => {
+    it('passes redirectUri to context when provided', async () => {
+      mockAuthkit.withAuth.mockResolvedValue({
+        auth: { user: null },
+        refreshedSessionData: null,
+      });
+
+      authkitMiddleware({ redirectUri: 'https://custom.example.com/callback' });
+
+      const mockRequest = new Request('http://test.local');
+      const mockResponse = new Response('OK', { status: 200 });
+
+      let capturedContext: any = null;
+      const args = {
+        request: mockRequest,
+        next: vi.fn(async ({ context }: any) => {
+          capturedContext = context;
+          return { response: mockResponse };
+        }),
+      };
+
+      await middlewareServerCallback(args);
+
+      expect(capturedContext.redirectUri).toBe('https://custom.example.com/callback');
+    });
+
+    it('passes undefined redirectUri when not provided', async () => {
+      mockAuthkit.withAuth.mockResolvedValue({
+        auth: { user: null },
+        refreshedSessionData: null,
+      });
+
+      authkitMiddleware();
+
+      const mockRequest = new Request('http://test.local');
+      const mockResponse = new Response('OK', { status: 200 });
+
+      let capturedContext: any = null;
+      const args = {
+        request: mockRequest,
+        next: vi.fn(async ({ context }: any) => {
+          capturedContext = context;
+          return { response: mockResponse };
+        }),
+      };
+
+      await middlewareServerCallback(args);
+
+      expect(capturedContext.redirectUri).toBeUndefined();
+    });
+  });
 });

@@ -508,11 +508,25 @@ function ClaimsDisplay() {
 
 ### Middleware
 
-#### `authkitMiddleware()`
+#### `authkitMiddleware(options?)`
 
 Processes authentication on every request. Validates tokens, refreshes sessions, and provides auth context to server functions.
 
-Already shown in setup, but can be imported separately if needed.
+```typescript
+import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
+
+// Basic usage
+authkitMiddleware();
+
+// With custom redirect URI (e.g., for Vercel preview deployments)
+authkitMiddleware({
+  redirectUri: 'https://preview-123.example.com/api/auth/callback',
+});
+```
+
+**Options:**
+
+- `redirectUri` - Override the default redirect URI from `WORKOS_REDIRECT_URI`. Useful for dynamic environments like preview deployments.
 
 ## TypeScript
 

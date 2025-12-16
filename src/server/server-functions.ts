@@ -1,7 +1,12 @@
 import { createServerFn } from '@tanstack/react-start';
 import { redirect } from '@tanstack/react-router';
 import { getAuthkit, getConfig } from './authkit-loader.js';
-import { getRawAuthFromContext, getSessionWithRefreshToken, refreshSession } from './auth-helpers.js';
+import {
+  getRawAuthFromContext,
+  getSessionWithRefreshToken,
+  refreshSession,
+  getRedirectUriFromContext,
+} from './auth-helpers.js';
 import type { User, Impersonator } from '../types.js';
 
 // Type-only import - safe for bundling
@@ -159,7 +164,11 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
-    return authkit.getAuthorizationUrl(options);
+    const contextRedirectUri = getRedirectUriFromContext();
+    return authkit.getAuthorizationUrl({
+      ...options,
+      redirectUri: options.redirectUri ?? contextRedirectUri,
+    });
   });
 
 /**
@@ -176,11 +185,16 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | { returnPathname?: string }) => data)
+  .inputValidator((data?: string | { returnPathname?: string; redirectUri?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const redirectUri = typeof data === 'string' ? undefined : data?.redirectUri;
+    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
-    return authkit.getSignInUrl({ returnPathname });
+    return authkit.getSignInUrl({
+      returnPathname,
+      redirectUri: redirectUri ?? contextRedirectUri,
+    });
   });
 
 /**
@@ -197,11 +211,16 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | { returnPathname?: string }) => data)
+  .inputValidator((data?: string | { returnPathname?: string; redirectUri?: string }) => data)
   .handler(async ({ data }) => {
     const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const redirectUri = typeof data === 'string' ? undefined : data?.redirectUri;
+    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
-    return authkit.getSignUpUrl({ returnPathname });
+    return authkit.getSignUpUrl({
+      returnPathname,
+      redirectUri: redirectUri ?? contextRedirectUri,
+    });
   });
 
 /**

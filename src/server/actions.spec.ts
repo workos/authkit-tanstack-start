@@ -113,7 +113,7 @@ describe('Actions', () => {
         request: new Request('http://test.local'),
       };
 
-      const result = await getAuthAction({ data: {} });
+      const result = await getAuthAction();
 
       expect(result).toEqual({
         user: { id: 'user_123', email: 'test@example.com' },
@@ -135,7 +135,7 @@ describe('Actions', () => {
         request: new Request('http://test.local'),
       };
 
-      const result = await getAuthAction({ data: {} });
+      const result = await getAuthAction();
 
       expect(result).toEqual({ user: null });
     });

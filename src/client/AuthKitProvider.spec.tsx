@@ -202,9 +202,10 @@ describe('AuthKitProvider', () => {
 
     // Mock window.location.href
     const originalLocation = window.location;
-    // @ts-expect-error - mocking window.location
-    delete window.location;
-    window.location = { ...originalLocation, href: '' };
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '' },
+      writable: true,
+    });
 
     try {
       const TestComponent = () => {
@@ -229,8 +230,7 @@ describe('AuthKitProvider', () => {
       expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/home' } });
       expect(window.location.href).toBe('https://auth.workos.com/logout');
     } finally {
-      // Restore window.location
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
     }
   });
 

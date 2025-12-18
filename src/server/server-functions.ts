@@ -1,8 +1,8 @@
-import { createServerFn } from '@tanstack/react-start';
 import { redirect } from '@tanstack/react-router';
-import { getAuthkit, getConfig } from './authkit-loader.js';
-import { getRawAuthFromContext, getSessionWithRefreshToken, refreshSession } from './auth-helpers.js';
-import type { User, Impersonator } from '../types.js';
+import { createServerFn } from '@tanstack/react-start';
+import type { Impersonator, User } from '../types.js';
+import { getRawAuthFromContext, refreshSession } from './auth-helpers.js';
+import { getAuthkit } from './authkit-loader.js';
 
 // Type-only import - safe for bundling
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
@@ -162,25 +162,31 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
     return authkit.getAuthorizationUrl(options);
   });
 
+/** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
+type SignInUrlOptions = Omit<GetAuthURLOptions, 'screenHint'>;
+
 /**
  * Get the sign-in URL.
  * Convenience wrapper around getAuthorizationUrl with sign-in screen hint.
  *
  * @example
  * ```typescript
- * // Without return path
+ * // Without options
  * const url = await getSignInUrl();
  *
- * // With return path
- * const url = await getSignInUrl({ data: { returnPathname: '/dashboard' } });
+ * // With return path (string shorthand)
+ * const url = await getSignInUrl({ data: '/dashboard' });
+ *
+ * // With options
+ * const url = await getSignInUrl({ data: { returnPathname: '/dashboard', state: 'custom-state' } });
  * ```
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | { returnPathname?: string }) => data)
+  .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
-    const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const options = typeof data === 'string' ? { returnPathname: data } : data;
     const authkit = await getAuthkit();
-    return authkit.getSignInUrl({ returnPathname });
+    return authkit.getSignInUrl(options);
   });
 
 /**
@@ -189,19 +195,22 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  *
  * @example
  * ```typescript
- * // Without return path
+ * // Without options
  * const url = await getSignUpUrl();
  *
- * // With return path
- * const url = await getSignUpUrl({ data: { returnPathname: '/dashboard' } });
+ * // With return path (string shorthand)
+ * const url = await getSignUpUrl({ data: '/dashboard' });
+ *
+ * // With options
+ * const url = await getSignUpUrl({ data: { returnPathname: '/dashboard', state: 'custom-state' } });
  * ```
  */
 export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | { returnPathname?: string }) => data)
+  .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
-    const returnPathname = typeof data === 'string' ? data : data?.returnPathname;
+    const options = typeof data === 'string' ? { returnPathname: data } : data;
     const authkit = await getAuthkit();
-    return authkit.getSignUpUrl({ returnPathname });
+    return authkit.getSignUpUrl(options);
   });
 
 /**

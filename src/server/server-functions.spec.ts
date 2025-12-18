@@ -237,7 +237,7 @@ describe('Server Functions', () => {
   });
 
   describe('getSignInUrl', () => {
-    it('generates sign-in URL with return path', async () => {
+    it('generates sign-in URL with return path string', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
       mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
@@ -247,19 +247,56 @@ describe('Server Functions', () => {
       expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: '/profile' });
     });
 
-    it('works without return path', async () => {
+    it('works without options', async () => {
       const signInUrl = 'https://auth.workos.com/sign-in';
       mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
 
       const result = await serverFunctions.getSignInUrl({ data: undefined });
 
       expect(result).toBe(signInUrl);
-      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({ returnPathname: undefined });
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith(undefined);
+    });
+
+    it('passes state option through', async () => {
+      const signInUrl = 'https://auth.workos.com/sign-in';
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
+
+      const result = await serverFunctions.getSignInUrl({
+        data: { returnPathname: '/dashboard', state: 'custom-state' },
+      });
+
+      expect(result).toBe(signInUrl);
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({
+        returnPathname: '/dashboard',
+        state: 'custom-state',
+      });
+    });
+
+    it('passes all options through', async () => {
+      const signInUrl = 'https://auth.workos.com/sign-in';
+      mockAuthkit.getSignInUrl.mockResolvedValue(signInUrl);
+
+      const result = await serverFunctions.getSignInUrl({
+        data: {
+          returnPathname: '/dashboard',
+          state: 'my-state',
+          organizationId: 'org_123',
+          loginHint: 'user@example.com',
+        },
+      });
+
+      expect(result).toBe(signInUrl);
+      expect(mockAuthkit.getSignInUrl).toHaveBeenCalledWith({
+        returnPathname: '/dashboard',
+        state: 'my-state',
+        organizationId: 'org_123',
+        loginHint: 'user@example.com',
+      });
     });
   });
 
   describe('getSignUpUrl', () => {
-    it('generates sign-up URL with return path', async () => {
+    it('generates sign-up URL with return path string', async () => {
       const signUpUrl = 'https://auth.workos.com/sign-up';
       mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
 
@@ -277,6 +314,43 @@ describe('Server Functions', () => {
 
       expect(result).toBe(signUpUrl);
       expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({ returnPathname: '/onboarding' });
+    });
+
+    it('passes state option through', async () => {
+      const signUpUrl = 'https://auth.workos.com/sign-up';
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
+
+      const result = await serverFunctions.getSignUpUrl({
+        data: { returnPathname: '/welcome', state: 'signup-flow' },
+      });
+
+      expect(result).toBe(signUpUrl);
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({
+        returnPathname: '/welcome',
+        state: 'signup-flow',
+      });
+    });
+
+    it('passes all options through', async () => {
+      const signUpUrl = 'https://auth.workos.com/sign-up';
+      mockAuthkit.getSignUpUrl.mockResolvedValue(signUpUrl);
+
+      const result = await serverFunctions.getSignUpUrl({
+        data: {
+          returnPathname: '/onboarding',
+          state: 'invite-123',
+          organizationId: 'org_456',
+          loginHint: 'newuser@example.com',
+        },
+      });
+
+      expect(result).toBe(signUpUrl);
+      expect(mockAuthkit.getSignUpUrl).toHaveBeenCalledWith({
+        returnPathname: '/onboarding',
+        state: 'invite-123',
+        organizationId: 'org_456',
+        loginHint: 'newuser@example.com',
+      });
     });
   });
 

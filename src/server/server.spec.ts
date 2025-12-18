@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Setup mocks before imports
 const mockHandleCallback = vi.fn();
@@ -22,7 +22,6 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 import { handleCallbackRoute } from './server';
-import { getAuthkit } from './authkit-loader';
 
 describe('handleCallbackRoute', () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 {
   "name": "@workos/authkit-tanstack-react-start",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "The WorkOS library for TanStack React Start provides convenient helpers for authentication and session management using WorkOS & AuthKit with TanStack React Start.",
   "type": "module",
   "main": "./dist/index.js",

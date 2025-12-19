@@ -6,43 +6,10 @@ on:
       - 'main'
   pull_request: {}
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  test:
-    name: Test Node ${{ matrix.node }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [20, 22, 24]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: 'pnpm'
-
-      - name: Install Dependencies
-        run: |
-          pnpm install
-
-      - name: Prettier
-        run: |
-          pnpm run prettier
-
-      # - name: Lint
-      #   run: |
-      #     pnpm run lint
-
-      - name: Build
-        run: |
-          pnpm run build
-
-      - name: Test
-        run: |
-          pnpm run test:coverage -- --run
+  ci:
+    uses: workos/workflows/.github/workflows/ci.yml@main
+    with:
+      lint-command: prettier
+      run-typecheck: false  # No typecheck script in package.json
+      test-command: test:coverage -- --run

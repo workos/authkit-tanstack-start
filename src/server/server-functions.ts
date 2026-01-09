@@ -160,10 +160,16 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
     const contextRedirectUri = getRedirectUriFromContext();
-    return authkit.getAuthorizationUrl({
-      ...options,
-      redirectUri: options.redirectUri ?? contextRedirectUri,
-    });
+
+    // Only inject context redirectUri if it exists and user didn't provide one
+    if (contextRedirectUri && !options.redirectUri) {
+      return authkit.getAuthorizationUrl({
+        ...options,
+        redirectUri: contextRedirectUri,
+      });
+    }
+
+    return authkit.getAuthorizationUrl(options);
   });
 
 /** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */

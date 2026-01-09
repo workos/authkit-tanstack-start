@@ -8,6 +8,7 @@ import type { User } from '../types.js';
 export interface AuthKitServerContext {
   auth: () => AuthResult<User>;
   request: Request;
+  redirectUri?: string;
   __setPendingHeader: (key: string, value: string) => void;
 }
 

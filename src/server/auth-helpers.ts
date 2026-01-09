@@ -20,6 +20,14 @@ export function isAuthConfigured(): boolean {
 }
 
 /**
+ * Gets the redirect URI from middleware context if configured.
+ */
+export function getRedirectUriFromContext(): string | undefined {
+  const ctx = getAuthKitContextOrNull();
+  return ctx?.redirectUri;
+}
+
+/**
  * Gets the session with refresh token from the current request.
  * Returns null if no valid session exists.
  */

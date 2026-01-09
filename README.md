@@ -103,9 +103,11 @@ If you're only using server-side authentication (`getAuth()` in loaders), you ca
 
 ### WorkOS Dashboard Configuration
 
-1. Go to [WorkOS Dashboard](https://dashboard.workos.com)
-2. Navigate to **Redirects** and add your callback URL: `http://localhost:3000/api/auth/callback`
-3. (Optional) Set a default **Logout URI** under Redirects for sign-out redirects
+1. Go to [WorkOS Dashboard](https://dashboard.workos.com) and navigate to the **Redirects** page.
+2. Under **Redirect URIs**, add your callback URL: `http://localhost:3000/api/auth/callback`
+3. Under **Sign-out redirect**, set the URL where you want users to be redirected after signing out. If you don't set a sign-out redirect URL, you must set the **App homepage URL** instead — WorkOS will redirect users there when no sign-out redirect is specified.
+
+   Note: If you don't set either the **Sign-out redirect** or the **App homepage URL**, WorkOS will redirect users to an error page.
 
 ## Usage
 

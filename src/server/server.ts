@@ -12,7 +12,7 @@ import type { HandleCallbackOptions } from './types.js';
  * @example
  * ```typescript
  * // Basic usage (no options)
- * import { handleCallbackRoute } from '@workos/authkit-tanstack-start';
+ * import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
  *
  * export const Route = createFileRoute('/api/auth/callback')({
  *   server: {
@@ -26,7 +26,7 @@ import type { HandleCallbackOptions } from './types.js';
  * @example
  * ```typescript
  * // With onSuccess hook
- * import { handleCallbackRoute } from '@workos/authkit-tanstack-start';
+ * import { handleCallbackRoute } from '@workos/authkit-tanstack-react-start';
  *
  * export const Route = createFileRoute('/api/auth/callback')({
  *   server: {

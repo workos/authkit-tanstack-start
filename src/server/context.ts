@@ -16,7 +16,7 @@ const MIDDLEWARE_NOT_CONFIGURED_ERROR = `AuthKit middleware is not configured.
 
 Add authkitMiddleware() to your app.tsx file:
 
-import { authkitMiddleware } from '@workos/authkit-tanstack-start';
+import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
 
 export default createRouter({
   routeTree,

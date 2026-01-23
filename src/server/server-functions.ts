@@ -52,7 +52,7 @@ export const getSignOutUrl = createServerFn({ method: 'POST' })
  *
  * @example
  * ```typescript
- * import { signOut } from '@workos/authkit-tanstack-start';
+ * import { signOut } from '@workos/authkit-tanstack-react-start';
  *
  * // In a route loader
  * export const Route = createFileRoute('/logout')({
@@ -134,7 +134,7 @@ export function getAuthFromContext(): UserInfo | NoUserInfo {
  * @example
  * ```typescript
  * // In a route loader
- * import { getAuth } from '@workos/authkit-tanstack-start';
+ * import { getAuth } from '@workos/authkit-tanstack-react-start';
  *
  * export const Route = createFileRoute('/protected')({
  *   loader: async () => {
@@ -249,7 +249,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  *
  * @example
  * ```typescript
- * import { switchToOrganization } from '@workos/authkit-tanstack-start';
+ * import { switchToOrganization } from '@workos/authkit-tanstack-react-start';
  *
  * const auth = await switchToOrganization({ data: { organizationId: 'org_123' } });
  * ```

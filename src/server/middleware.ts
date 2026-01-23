@@ -21,7 +21,7 @@ export interface AuthKitMiddlewareOptions {
  * @example
  * ```typescript
  * import { createStart } from '@tanstack/react-start';
- * import { authkitMiddleware } from '@workos/authkit-tanstack-start';
+ * import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
  *
  * export const startInstance = createStart(() => ({
  *   requestMiddleware: [authkitMiddleware()],

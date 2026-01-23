@@ -1,5 +1,5 @@
 /**
- * @workos/authkit-tanstack-start/client
+ * @workos/authkit-tanstack-react-start/client
  *
  * Client-side hooks for WorkOS AuthKit integration with TanStack Start
  */

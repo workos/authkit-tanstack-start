@@ -94,7 +94,7 @@ function RouteComponent() {
           Client-Side Hooks Demo
         </Heading>
         <Text size="5" align="center" color="gray">
-          This page demonstrates the client-side hooks from <Code>@workos/authkit-tanstack-start/client</Code>
+          This page demonstrates the client-side hooks from <Code>@workos/authkit-tanstack-react-start/client</Code>
         </Text>
         <Callout.Root>
           <Callout.Text>ℹ️ Please sign in to see the client-side hooks in action.</Callout.Text>

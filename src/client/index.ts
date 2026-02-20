@@ -5,6 +5,7 @@
  */
 
 export { AuthKitProvider, useAuth } from './AuthKitProvider.js';
+export { Impersonation } from './components/impersonation.js';
 export { useAccessToken } from './useAccessToken.js';
 export { useTokenClaims } from './useTokenClaims.js';
 

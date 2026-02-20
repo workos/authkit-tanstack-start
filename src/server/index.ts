@@ -24,4 +24,6 @@ export {
   switchToOrganizationAction,
   getAccessTokenAction,
   refreshAccessTokenAction,
+  getOrganizationAction,
+  type OrganizationInfo,
 } from './actions.js';

@@ -1,8 +1,8 @@
-import * as React from 'react';
+import type { ReactNode } from 'react';
 import { Button } from './button.js';
 
 interface MinMaxButtonProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   minimizedValue: '0' | '1';
 }
 

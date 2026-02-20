@@ -1,11 +1,10 @@
-import * as React from 'react';
+import { useEffect, useState, type ComponentPropsWithoutRef } from 'react';
 import { Button } from './button.js';
 import { MinMaxButton } from './min-max-button.js';
-import { getOrganizationAction } from '../../server/actions.js';
-import type { OrganizationInfo } from '../../server/actions.js';
+import { getOrganizationAction, type OrganizationInfo } from '../../server/actions.js';
 import { useAuth } from '../AuthKitProvider.js';
 
-interface ImpersonationProps extends React.ComponentPropsWithoutRef<'div'> {
+interface ImpersonationProps extends ComponentPropsWithoutRef<'div'> {
   side?: 'top' | 'bottom';
   returnTo?: string;
 }
@@ -13,9 +12,9 @@ interface ImpersonationProps extends React.ComponentPropsWithoutRef<'div'> {
 export function Impersonation({ side = 'bottom', returnTo, ...props }: ImpersonationProps) {
   const { user, impersonator, organizationId, signOut } = useAuth();
 
-  const [organization, setOrganization] = React.useState<OrganizationInfo | null>(null);
+  const [organization, setOrganization] = useState<OrganizationInfo | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!organizationId || !impersonator || !user) return;
     if (organization && organization.id === organizationId) return;
     getOrganizationAction({ data: organizationId }).then(setOrganization);

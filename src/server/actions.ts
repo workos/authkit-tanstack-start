@@ -101,17 +101,13 @@ export const switchToOrganizationAction = createServerFn({ method: 'POST' })
     return sanitizeAuthForClient(result);
   });
 
-/**
- * Minimal organization info returned to the client.
- */
 export interface OrganizationInfo {
   id: string;
   name: string;
 }
 
 /**
- * Fetch organization details by ID. Used by the Impersonation component
- * to display the organization name.
+ * Fetch organization details by ID.
  */
 export const getOrganizationAction = createServerFn({ method: 'GET' })
   .inputValidator((organizationId: string) => organizationId)

@@ -1,9 +1,8 @@
-import * as React from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
 
-const Button = React.forwardRef<HTMLButtonElement, React.ComponentPropsWithoutRef<'button'>>((props, forwardedRef) => {
+export function Button(props: ComponentPropsWithoutRef<'button'>) {
   return (
     <button
-      ref={forwardedRef}
       type="button"
       {...props}
       style={{
@@ -25,8 +24,4 @@ const Button = React.forwardRef<HTMLButtonElement, React.ComponentPropsWithoutRe
       }}
     />
   );
-});
-
-Button.displayName = 'Button';
-
-export { Button };
+}

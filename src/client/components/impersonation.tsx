@@ -17,7 +17,7 @@ export function Impersonation({ side = 'bottom', returnTo, ...props }: Impersona
   useEffect(() => {
     if (!organizationId || !impersonator || !user) return;
     if (organization && organization.id === organizationId) return;
-    getOrganizationAction({ data: organizationId }).then(setOrganization);
+    getOrganizationAction({ data: organizationId }).then(setOrganization).catch(() => { console.error(`${organizationId} not found!`});
   }, [organizationId, impersonator, user]);
 
   if (!impersonator || !user) return null;

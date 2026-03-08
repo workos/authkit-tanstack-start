@@ -28,7 +28,9 @@ export function getRedirectUriFromContext(): string | undefined {
 }
 
 /**
- * Gets the session with refresh token from the current request.
+ * Gets the session with refresh token from the auth context.
+ * Uses the middleware auth context which always has the latest refresh token,
+ * even if the middleware auto-refreshed during withAuth().
  * Returns null if no valid session exists.
  */
 export async function getSessionWithRefreshToken(): Promise<{
@@ -43,16 +45,17 @@ export async function getSessionWithRefreshToken(): Promise<{
     return null;
   }
 
-  const ctx = getAuthKitContext();
-  const authkit = await getAuthkit();
-  const session = await authkit.getSession(ctx.request);
-
-  if (!session?.refreshToken) {
+  // Use the refresh token from the auth context — it's always up-to-date.
+  // Previously we re-read the session from the original request, but if the
+  // middleware auto-refreshed (e.g., expired access token), the old refresh
+  // token in the request cookie would already be invalidated.
+  const refreshToken = 'refreshToken' in auth ? auth.refreshToken : undefined;
+  if (!refreshToken) {
     return null;
   }
 
   return {
-    refreshToken: session.refreshToken,
+    refreshToken,
     accessToken: auth.accessToken,
     user: auth.user,
     impersonator: auth.impersonator,

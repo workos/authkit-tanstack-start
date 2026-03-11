@@ -4,7 +4,7 @@ import appCssUrl from '../app.css?url';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
 import { getSignInUrl } from '@workos/authkit-tanstack-react-start';
-import { AuthKitProvider, getAuthAction } from '@workos/authkit-tanstack-react-start/client';
+import { AuthKitProvider, Impersonation, getAuthAction } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';
@@ -84,6 +84,7 @@ function RootComponent() {
             </Flex>
           </Container>
         </Theme>
+        <Impersonation />
         <TanStackRouterDevtools position="bottom-right" />
       </AuthKitProvider>
     </RootDocument>

@@ -40,7 +40,7 @@ describe('useAccessToken', () => {
     vi.clearAllMocks();
 
     // Default mock implementations
-    vi.mocked(tokenStore.subscribe).mockImplementation((listener) => {
+    vi.mocked(tokenStore.subscribe).mockImplementation((_listener) => {
       return () => {};
     });
 

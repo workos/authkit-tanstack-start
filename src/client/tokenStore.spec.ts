@@ -207,7 +207,7 @@ describe('TokenStore', () => {
 
       try {
         await store.refreshToken();
-      } catch (e) {
+      } catch {
         // Expected to throw
       }
 

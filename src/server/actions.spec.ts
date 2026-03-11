@@ -25,6 +25,15 @@ vi.mock('./auth-helpers', () => ({
   refreshSession: vi.fn(),
 }));
 
+const mockGetOrganization = vi.fn();
+vi.mock('@workos/authkit-session', () => ({
+  getWorkOS: () => ({
+    organizations: {
+      getOrganization: mockGetOrganization,
+    },
+  }),
+}));
+
 // Mock createServerFn
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => ({
@@ -52,6 +61,7 @@ import {
   getAccessTokenAction,
   refreshAccessTokenAction,
   switchToOrganizationAction,
+  getOrganizationAction,
 } from './actions';
 
 describe('Actions', () => {
@@ -266,6 +276,25 @@ describe('Actions', () => {
       const result = await switchToOrganizationAction({ data: { organizationId: 'bad_org' } });
 
       expect(result).toEqual({ user: null });
+    });
+  });
+
+  describe('getOrganizationAction', () => {
+    it('returns organization info on success', async () => {
+      mockGetOrganization.mockResolvedValue({ id: 'org_123', name: 'Test Org' });
+
+      const result = await getOrganizationAction({ data: 'org_123' });
+
+      expect(mockGetOrganization).toHaveBeenCalledWith('org_123');
+      expect(result).toEqual({ id: 'org_123', name: 'Test Org' });
+    });
+
+    it('returns null when organization is not found', async () => {
+      mockGetOrganization.mockRejectedValue(new Error('Not found'));
+
+      const result = await getOrganizationAction({ data: 'bad_org' });
+
+      expect(result).toBeNull();
     });
   });
 });

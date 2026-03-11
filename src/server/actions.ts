@@ -111,9 +111,13 @@ export interface OrganizationInfo {
  */
 export const getOrganizationAction = createServerFn({ method: 'GET' })
   .inputValidator((organizationId: string) => organizationId)
-  .handler(async ({ data: organizationId }): Promise<OrganizationInfo> => {
-    const { getWorkOS } = await import('@workos/authkit-session');
-    const workos = getWorkOS();
-    const org = await workos.organizations.getOrganization(organizationId);
-    return { id: org.id, name: org.name };
+  .handler(async ({ data: organizationId }): Promise<OrganizationInfo | null> => {
+    try {
+      const { getWorkOS } = await import('@workos/authkit-session');
+      const workos = getWorkOS();
+      const org = await workos.organizations.getOrganization(organizationId);
+      return { id: org.id, name: org.name };
+    } catch {
+      return null;
+    }
   });

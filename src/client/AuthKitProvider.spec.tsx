@@ -14,12 +14,6 @@ vi.mock('../server/server-functions', () => ({
   getSignOutUrl: vi.fn(),
 }));
 
-// Mock TanStack Router hooks to avoid warnings
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: '/' }),
-}));
-
 describe('AuthKitProvider', () => {
   const mockUser: User = {
     id: 'user_123',
@@ -455,7 +449,7 @@ describe('AuthKitProvider', () => {
     });
   });
 
-  it('handles signOut when no session exists (navigates to returnTo)', async () => {
+  it('handles signOut when no session exists (redirects to returnTo)', async () => {
     const { getAuthAction } = await import('../server/actions');
     const { getSignOutUrl } = await import('../server/server-functions');
 
@@ -464,30 +458,37 @@ describe('AuthKitProvider', () => {
     // Mock getSignOutUrl to return null URL (no session to terminate)
     vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
 
-    const mockNavigate = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
-
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return <button onClick={() => handleSignOut({ returnTo: '/login' })}>Sign Out</button>;
-    };
-
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
+    // Mock window.location.href
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '' },
+      writable: true,
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+    try {
+      const TestComponent = () => {
+        const { signOut: handleSignOut } = useAuth();
+        return <button onClick={() => handleSignOut({ returnTo: '/login' })}>Sign Out</button>;
+      };
 
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' });
+      render(
+        <AuthKitProvider>
+          <TestComponent />
+        </AuthKitProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Sign Out')).toBeDefined();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sign Out'));
+      });
+
+      expect(window.location.href).toBe('/login');
+    } finally {
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    }
   });
 
   it('uses default returnTo when signOut called without options', async () => {
@@ -497,31 +498,38 @@ describe('AuthKitProvider', () => {
     vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
     vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
 
-    const mockNavigate = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
-
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return <button onClick={() => handleSignOut()}>Sign Out</button>;
-    };
-
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
+    // Mock window.location.href
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '' },
+      writable: true,
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+    try {
+      const TestComponent = () => {
+        const { signOut: handleSignOut } = useAuth();
+        return <button onClick={() => handleSignOut()}>Sign Out</button>;
+      };
 
-    // Default returnTo is '/'
-    expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/' } });
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
+      render(
+        <AuthKitProvider>
+          <TestComponent />
+        </AuthKitProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Sign Out')).toBeDefined();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sign Out'));
+      });
+
+      // Default returnTo is '/'
+      expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/' } });
+      expect(window.location.href).toBe('/');
+    } finally {
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    }
   });
 });

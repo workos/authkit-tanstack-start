@@ -18,3 +18,6 @@ dist/
 coverage/
 
 test-results/
+
+# Case harness markers (auto-added by bootstrap)
+.case-*

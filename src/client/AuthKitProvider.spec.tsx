@@ -14,12 +14,6 @@ vi.mock('../server/server-functions', () => ({
   getSignOutUrl: vi.fn(),
 }));
 
-// Mock TanStack Router hooks to avoid warnings
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: '/' }),
-}));
-
 describe('AuthKitProvider', () => {
   const mockUser: User = {
     id: 'user_123',
@@ -39,6 +33,31 @@ describe('AuthKitProvider', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('renders without router context (no useNavigate SSR warning)', async () => {
+    // Regression test for https://github.com/workos/authkit-tanstack-start/issues/57
+    // AuthKitProvider renders as a Wrap component before RouterProvider exists.
+    // It must NOT call useNavigate() during render, or it would trigger:
+    // "useRouter must be used inside a <RouterProvider>"
+    //
+    // Since @tanstack/react-router is not mocked here, any unconditional
+    // useNavigate() call would throw. If this test passes, the provider
+    // does not call useNavigate during render.
+    const { getAuthAction } = await import('../server/actions');
+    vi.mocked(getAuthAction).mockResolvedValue({ user: null });
+
+    // This will throw if AuthKitProvider calls useNavigate() unconditionally,
+    // because there is no RouterProvider wrapping the component.
+    await act(async () => {
+      render(
+        <AuthKitProvider>
+          <div>Rendered without router</div>
+        </AuthKitProvider>,
+      );
+    });
+
+    expect(screen.getByText('Rendered without router')).toBeDefined();
   });
 
   it('renders children', async () => {
@@ -455,7 +474,7 @@ describe('AuthKitProvider', () => {
     });
   });
 
-  it('handles signOut when no session exists (navigates to returnTo)', async () => {
+  it('handles signOut when no session exists (navigates to returnTo via location)', async () => {
     const { getAuthAction } = await import('../server/actions');
     const { getSignOutUrl } = await import('../server/server-functions');
 
@@ -464,30 +483,37 @@ describe('AuthKitProvider', () => {
     // Mock getSignOutUrl to return null URL (no session to terminate)
     vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
 
-    const mockNavigate = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
-
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return <button onClick={() => handleSignOut({ returnTo: '/login' })}>Sign Out</button>;
-    };
-
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
+    // Mock window.location.href
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '' },
+      writable: true,
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+    try {
+      const TestComponent = () => {
+        const { signOut: handleSignOut } = useAuth();
+        return <button onClick={() => handleSignOut({ returnTo: '/login' })}>Sign Out</button>;
+      };
 
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' });
+      render(
+        <AuthKitProvider>
+          <TestComponent />
+        </AuthKitProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Sign Out')).toBeDefined();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sign Out'));
+      });
+
+      expect(window.location.href).toBe('/login');
+    } finally {
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    }
   });
 
   it('uses default returnTo when signOut called without options', async () => {
@@ -497,31 +523,38 @@ describe('AuthKitProvider', () => {
     vi.mocked(getAuthAction).mockResolvedValue({ user: mockUser, sessionId: 'session_123' });
     vi.mocked(getSignOutUrl).mockResolvedValue({ url: null });
 
-    const mockNavigate = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (vi.mocked(await import('@tanstack/react-router')) as any).useNavigate = () => mockNavigate;
-
-    const TestComponent = () => {
-      const { signOut: handleSignOut } = useAuth();
-      return <button onClick={() => handleSignOut()}>Sign Out</button>;
-    };
-
-    render(
-      <AuthKitProvider>
-        <TestComponent />
-      </AuthKitProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Sign Out')).toBeDefined();
+    // Mock window.location.href
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, href: '' },
+      writable: true,
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Sign Out'));
-    });
+    try {
+      const TestComponent = () => {
+        const { signOut: handleSignOut } = useAuth();
+        return <button onClick={() => handleSignOut()}>Sign Out</button>;
+      };
 
-    // Default returnTo is '/'
-    expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/' } });
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
+      render(
+        <AuthKitProvider>
+          <TestComponent />
+        </AuthKitProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Sign Out')).toBeDefined();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Sign Out'));
+      });
+
+      // Default returnTo is '/'
+      expect(getSignOutUrl).toHaveBeenCalledWith({ data: { returnTo: '/' } });
+      expect(window.location.href).toBe('/');
+    } finally {
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
+    }
   });
 });

@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { checkSessionAction, getAuthAction, refreshAuthAction, switchToOrganizationAction } from '../server/actions.js';
 import { ClientUserInfo, NoUserInfo, getSignOutUrl } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
@@ -22,7 +21,6 @@ const getProps = (auth: ClientUserInfo | NoUserInfo | undefined) => {
 };
 
 export function AuthKitProvider({ children, onSessionExpired, initialAuth }: AuthKitProviderProps) {
-  const navigate = useNavigate();
   const initialProps = getProps(initialAuth);
   const [user, setUser] = useState<User | null>(initialProps.user);
   const [sessionId, setSessionId] = useState<string | undefined>(initialProps.sessionId);
@@ -88,18 +86,15 @@ export function AuthKitProvider({ children, onSessionExpired, initialAuth }: Aut
     [],
   );
 
-  const handleSignOut = useCallback(
-    async ({ returnTo = '/' }: { returnTo?: string } = {}) => {
-      const result = await getSignOutUrl({ data: { returnTo } });
+  const handleSignOut = useCallback(async ({ returnTo = '/' }: { returnTo?: string } = {}) => {
+    const result = await getSignOutUrl({ data: { returnTo } });
 
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        navigate({ to: returnTo });
-      }
-    },
-    [navigate],
-  );
+    if (result.url) {
+      window.location.href = result.url;
+    } else {
+      window.location.href = returnTo;
+    }
+  }, []);
 
   const handleSwitchToOrganization = useCallback(async (organizationId: string) => {
     try {

@@ -97,26 +97,24 @@ describe('Auth Helpers', () => {
       expect(result).toBeNull();
     });
 
-    it('returns null when no refresh token in session', async () => {
+    it('returns null when no refresh token in auth context', async () => {
       mockAuthContext = {
         auth: () => ({ user: { id: 'user_123' }, accessToken: 'token' }),
         request: new Request('http://test.local'),
       };
-      mockAuthkit.getSession.mockResolvedValue({ refreshToken: null });
 
       const result = await getSessionWithRefreshToken();
 
       expect(result).toBeNull();
     });
 
-    it('returns session data with refresh token', async () => {
+    it('returns session data with refresh token from auth context', async () => {
       const user = { id: 'user_123', email: 'test@example.com' };
       const impersonator = { email: 'admin@example.com' };
       mockAuthContext = {
-        auth: () => ({ user, accessToken: 'access_token', impersonator }),
+        auth: () => ({ user, accessToken: 'access_token', refreshToken: 'refresh_token', impersonator }),
         request: new Request('http://test.local'),
       };
-      mockAuthkit.getSession.mockResolvedValue({ refreshToken: 'refresh_token' });
 
       const result = await getSessionWithRefreshToken();
 
@@ -126,6 +124,37 @@ describe('Auth Helpers', () => {
         user,
         impersonator,
       });
+    });
+
+    it('uses middleware-refreshed token instead of stale request token', async () => {
+      // Simulates the case where middleware auto-refreshed the session
+      // (e.g., expired access token). The auth context has the NEW refresh token,
+      // while the original request cookie has the OLD (invalidated) one.
+      const user = { id: 'user_123' };
+      mockAuthContext = {
+        auth: () => ({
+          user,
+          accessToken: 'new_access_token',
+          refreshToken: 'new_refresh_token', // refreshed by middleware
+          impersonator: undefined,
+        }),
+        request: new Request('http://test.local', {
+          headers: { cookie: 'wos-session=old_encrypted_session' },
+        }),
+      };
+
+      const result = await getSessionWithRefreshToken();
+
+      // Should use the NEW refresh token from auth context, not the old one from request
+      expect(result).toEqual({
+        refreshToken: 'new_refresh_token',
+        accessToken: 'new_access_token',
+        user,
+        impersonator: undefined,
+      });
+
+      // Should NOT call getSession on the request (no longer needed)
+      expect(mockAuthkit.getSession).not.toHaveBeenCalled();
     });
   });
 
@@ -144,10 +173,9 @@ describe('Auth Helpers', () => {
     it('refreshes session and saves encrypted session', async () => {
       const user = { id: 'user_123' };
       mockAuthContext = {
-        auth: () => ({ user, accessToken: 'old_token' }),
+        auth: () => ({ user, accessToken: 'old_token', refreshToken: 'refresh_token' }),
         request: new Request('http://test.local'),
       };
-      mockAuthkit.getSession.mockResolvedValue({ refreshToken: 'refresh_token' });
       mockAuthkit.refreshSession.mockResolvedValue({
         auth: { user, accessToken: 'new_token', sessionId: 'session_123' },
         encryptedSession: 'encrypted_data',
@@ -171,10 +199,9 @@ describe('Auth Helpers', () => {
     it('does not save session when no encrypted data', async () => {
       const user = { id: 'user_123' };
       mockAuthContext = {
-        auth: () => ({ user, accessToken: 'token' }),
+        auth: () => ({ user, accessToken: 'token', refreshToken: 'refresh_token' }),
         request: new Request('http://test.local'),
       };
-      mockAuthkit.getSession.mockResolvedValue({ refreshToken: 'refresh_token' });
       mockAuthkit.refreshSession.mockResolvedValue({
         auth: { user },
         encryptedSession: null,

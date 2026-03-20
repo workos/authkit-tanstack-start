@@ -49,7 +49,7 @@ export function AuthKitProvider({ children, onSessionExpired, initialAuth }: Aut
       setEntitlements(props.entitlements);
       setFeatureFlags(props.featureFlags);
       setImpersonator(props.impersonator);
-    } catch (error) {
+    } catch {
       setUser(null);
       setSessionId(undefined);
       setOrganizationId(undefined);

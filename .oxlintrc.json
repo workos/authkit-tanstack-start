@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": null,
+  "categories": {},
+  "rules": {},
+  "ignorePatterns": ["dist/", "example/src/routeTree.gen.ts"]
+}

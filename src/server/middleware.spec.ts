@@ -67,11 +67,9 @@ describe('authkitMiddleware', () => {
       const mockRequest = new Request('http://test.local');
       const mockResponse = new Response('OK', { status: 200 });
 
-      let capturedContext: any = null;
       const args = {
         request: mockRequest,
         next: vi.fn(async ({ context }: any) => {
-          capturedContext = context;
           // Simulate action setting cookie via context
           context.__setPendingHeader('Set-Cookie', 'session=abc123; Path=/');
           return { response: mockResponse };

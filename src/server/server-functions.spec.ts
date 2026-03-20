@@ -58,7 +58,7 @@ let mockAuthContext: any = null;
 
 // Mock createServerFn to return testable functions
 vi.mock('@tanstack/react-start', () => ({
-  createServerFn: (options?: any) => ({
+  createServerFn: (_options?: any) => ({
     inputValidator: (validator: Function) => ({
       handler: (handler: Function) => {
         const fn = async (opts?: { data?: any }) => {
@@ -82,8 +82,9 @@ vi.mock('@tanstack/react-start', () => ({
 }));
 
 // Now import everything after mocks are set up
-import { getRequest } from '@tanstack/react-start/server';
-import { getAuthkit } from './authkit-loader';
+// These imports are used by vi.mock hoisting above
+import '@tanstack/react-start/server';
+import './authkit-loader';
 import * as serverFunctions from './server-functions';
 
 describe('Server Functions', () => {

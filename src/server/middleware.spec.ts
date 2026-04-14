@@ -6,9 +6,12 @@ const mockAuthkit = {
   saveSession: vi.fn(),
 };
 
+const mockGetConfig = vi.fn();
+
 vi.mock('./authkit-loader', () => ({
   getAuthkit: vi.fn(() => Promise.resolve(mockAuthkit)),
   validateConfig: vi.fn(() => Promise.resolve()),
+  getConfig: () => mockGetConfig(),
 }));
 
 let middlewareServerCallback: any = null;
@@ -250,6 +253,7 @@ describe('authkitMiddleware', () => {
         auth: { user: null },
         refreshedSessionData: null,
       });
+      mockGetConfig.mockResolvedValue(undefined);
 
       authkitMiddleware();
 
@@ -268,6 +272,60 @@ describe('authkitMiddleware', () => {
       await middlewareServerCallback(args);
 
       expect(capturedContext.redirectUri).toBeUndefined();
+    });
+
+    it('uses WORKOS_REDIRECT_URI from config when option not provided', async () => {
+      const envRedirectUri = 'https://env.example.com/callback';
+      mockAuthkit.withAuth.mockResolvedValue({
+        auth: { user: null },
+        refreshedSessionData: null,
+      });
+      mockGetConfig.mockResolvedValue(envRedirectUri);
+
+      authkitMiddleware();
+
+      const mockRequest = new Request('http://test.local');
+      const mockResponse = new Response('OK', { status: 200 });
+
+      let capturedContext: any = null;
+      const args = {
+        request: mockRequest,
+        next: vi.fn(async ({ context }: any) => {
+          capturedContext = context;
+          return { response: mockResponse };
+        }),
+      };
+
+      await middlewareServerCallback(args);
+
+      expect(capturedContext.redirectUri).toBe(envRedirectUri);
+    });
+
+    it('prioritizes explicit option over config', async () => {
+      const explicitRedirectUri = 'https://explicit.example.com/callback';
+      mockAuthkit.withAuth.mockResolvedValue({
+        auth: { user: null },
+        refreshedSessionData: null,
+      });
+      mockGetConfig.mockResolvedValue('https://env.example.com/callback');
+
+      authkitMiddleware({ redirectUri: explicitRedirectUri });
+
+      const mockRequest = new Request('http://test.local');
+      const mockResponse = new Response('OK', { status: 200 });
+
+      let capturedContext: any = null;
+      const args = {
+        request: mockRequest,
+        next: vi.fn(async ({ context }: any) => {
+          capturedContext = context;
+          return { response: mockResponse };
+        }),
+      };
+
+      await middlewareServerCallback(args);
+
+      expect(capturedContext.redirectUri).toBe(explicitRedirectUri);
     });
   });
 });

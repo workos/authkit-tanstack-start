@@ -1,5 +1,5 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { getAuthkit, validateConfig } from './authkit-loader.js';
+import { getAuthkit, validateConfig, getConfig } from './authkit-loader.js';
 
 let configValidated = false;
 
@@ -52,7 +52,7 @@ export const authkitMiddleware = (options?: AuthKitMiddlewareOptions) => {
       context: {
         auth: () => auth,
         request: args.request,
-        redirectUri: options?.redirectUri,
+        redirectUri: options?.redirectUri ?? (await getConfig('redirectUri')),
         __setPendingHeader: (key: string, value: string) => {
           // Use append for Set-Cookie to support multiple cookies
           if (key.toLowerCase() === 'set-cookie') {

@@ -23,6 +23,13 @@ function writeCookieAndReturn(result: GetAuthorizationUrlResult): string {
   return result.url;
 }
 
+/** Inject middleware-configured redirectUri only when caller did not provide one. */
+function applyContextRedirectUri<T extends { redirectUri?: string } | undefined>(options: T): T {
+  const contextRedirectUri = getRedirectUriFromContext();
+  if (!contextRedirectUri || options?.redirectUri) return options;
+  return { ...options, redirectUri: contextRedirectUri } as T;
+}
+
 // Type exports - re-export shared types from authkit-session
 export type { GetAuthURLOptions };
 
@@ -175,11 +182,7 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
-    const contextRedirectUri = getRedirectUriFromContext();
-    const finalOptions =
-      contextRedirectUri && !options.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
-
-    return writeCookieAndReturn(await authkit.getAuthorizationUrl(finalOptions));
+    return writeCookieAndReturn(await authkit.getAuthorizationUrl(applyContextRedirectUri(options)));
   });
 
 /** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
@@ -205,13 +208,8 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
-    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
-
-    const finalOptions =
-      contextRedirectUri && !options?.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
-
-    return writeCookieAndReturn(await authkit.getSignInUrl(finalOptions));
+    return writeCookieAndReturn(await authkit.getSignInUrl(applyContextRedirectUri(options)));
   });
 
 /**
@@ -234,13 +232,8 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
-    const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
-
-    const finalOptions =
-      contextRedirectUri && !options?.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
-
-    return writeCookieAndReturn(await authkit.getSignUpUrl(finalOptions));
+    return writeCookieAndReturn(await authkit.getSignUpUrl(applyContextRedirectUri(options)));
   });
 
 /**

@@ -3,9 +3,25 @@ import { createServerFn } from '@tanstack/react-start';
 import type { Impersonator, User } from '../types.js';
 import { getRawAuthFromContext, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
+import { getAuthKitContextOrNull } from './context.js';
+import { serializePKCESetCookie } from '@workos/authkit-session';
 
 // Type-only import - safe for bundling
-import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
+import type {
+  GetAuthorizationUrlOptions as GetAuthURLOptions,
+  GetAuthorizationUrlResult,
+} from '@workos/authkit-session';
+
+function writeCookieAndReturn(result: GetAuthorizationUrlResult): string {
+  const ctx = getAuthKitContextOrNull();
+  if (!ctx?.__setPendingHeader) {
+    throw new Error(
+      '[authkit-tanstack-react-start] PKCE cookie could not be set: middleware context unavailable. Ensure authkitMiddleware is registered in your request middleware stack.',
+    );
+  }
+  ctx.__setPendingHeader('Set-Cookie', serializePKCESetCookie(result.cookieOptions, result.sealedState));
+  return result.url;
+}
 
 // Type exports - re-export shared types from authkit-session
 export type { GetAuthURLOptions };
@@ -160,16 +176,10 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
     const contextRedirectUri = getRedirectUriFromContext();
+    const finalOptions =
+      contextRedirectUri && !options.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
 
-    // Only inject context redirectUri if it exists and user didn't provide one
-    if (contextRedirectUri && !options.redirectUri) {
-      return authkit.getAuthorizationUrl({
-        ...options,
-        redirectUri: contextRedirectUri,
-      });
-    }
-
-    return authkit.getAuthorizationUrl(options);
+    return writeCookieAndReturn(await authkit.getAuthorizationUrl(finalOptions));
   });
 
 /** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
@@ -198,15 +208,10 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
     const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
 
-    // Only inject context redirectUri if it exists and user didn't provide one
-    if (contextRedirectUri && !options?.redirectUri) {
-      return authkit.getSignInUrl({
-        ...options,
-        redirectUri: contextRedirectUri,
-      });
-    }
+    const finalOptions =
+      contextRedirectUri && !options?.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
 
-    return authkit.getSignInUrl(options);
+    return writeCookieAndReturn(await authkit.getSignInUrl(finalOptions));
   });
 
 /**
@@ -232,15 +237,10 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
     const contextRedirectUri = getRedirectUriFromContext();
     const authkit = await getAuthkit();
 
-    // Only inject context redirectUri if it exists and user didn't provide one
-    if (contextRedirectUri && !options?.redirectUri) {
-      return authkit.getSignUpUrl({
-        ...options,
-        redirectUri: contextRedirectUri,
-      });
-    }
+    const finalOptions =
+      contextRedirectUri && !options?.redirectUri ? { ...options, redirectUri: contextRedirectUri } : options;
 
-    return authkit.getSignUpUrl(options);
+    return writeCookieAndReturn(await authkit.getSignUpUrl(finalOptions));
   });
 
 /**

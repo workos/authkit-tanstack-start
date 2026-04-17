@@ -27,3 +27,5 @@ export {
   getOrganizationAction,
   type OrganizationInfo,
 } from './actions.js';
+
+export { OAuthStateMismatchError, PKCECookieMissingError } from '@workos/authkit-session';

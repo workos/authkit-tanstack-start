@@ -36,7 +36,71 @@ describe('TanStackStartCookieSessionStorage', () => {
     mockContextAvailable = true;
   });
 
-  describe('getSession', () => {
+  describe('getCookie', () => {
+    it('returns the named cookie value', async () => {
+      const request = new Request('http://example.com', {
+        headers: { cookie: 'wos-auth-verifier=sealed-abc' },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBe('sealed-abc');
+    });
+
+    it('returns null without cookies', async () => {
+      const request = new Request('http://example.com');
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBeNull();
+    });
+
+    it('returns null when the named cookie is absent', async () => {
+      const request = new Request('http://example.com', {
+        headers: { cookie: 'other=value' },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBeNull();
+    });
+
+    it('URI-decodes the cookie value', async () => {
+      const encoded = encodeURIComponent('value with spaces & symbols');
+      const request = new Request('http://example.com', {
+        headers: { cookie: `wos-auth-verifier=${encoded}` },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBe('value with spaces & symbols');
+    });
+
+    it('returns the named cookie when mixed with others', async () => {
+      const request = new Request('http://example.com', {
+        headers: { cookie: 'other=x; wos-auth-verifier=target; another=y' },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBe('target');
+    });
+
+    it('preserves = padding inside a sealed cookie value', async () => {
+      const request = new Request('http://example.com', {
+        headers: { cookie: 'wos-auth-verifier=abc==' },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBe('abc==');
+    });
+
+    it('returns null on malformed percent-encoding instead of throwing', async () => {
+      const request = new Request('http://example.com', {
+        headers: { cookie: 'wos-auth-verifier=%E0%A4%A' },
+      });
+
+      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getSession (inherited wrapper)', () => {
     it('extracts session from cookies', async () => {
       const request = new Request('http://example.com', {
         headers: { cookie: 'wos_session=test-value' },

@@ -4,22 +4,47 @@ import type { Impersonator, User } from '../types.js';
 import { getRawAuthFromContext, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
 import { getAuthKitContextOrNull } from './context.js';
-import { serializePKCESetCookie } from '@workos/authkit-session';
 
 // Type-only import - safe for bundling
-import type {
-  GetAuthorizationUrlOptions as GetAuthURLOptions,
-  GetAuthorizationUrlResult,
-} from '@workos/authkit-session';
+import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
 
-function writeCookieAndReturn(result: GetAuthorizationUrlResult): string {
+type AuthorizationResult = {
+  url: string;
+  response?: Response;
+  headers?: HeadersBag;
+};
+
+/**
+ * Forward every `Set-Cookie` (and any other header) emitted by the upstream
+ * authorization-URL call through middleware's pending-header channel so the
+ * PKCE verifier cookie lands on the outgoing response. Each `Set-Cookie` entry
+ * is appended as its own header — never comma-joined — so multi-cookie
+ * emissions survive as distinct HTTP headers.
+ */
+function forwardAuthorizationCookies(result: AuthorizationResult): string {
   const ctx = getAuthKitContextOrNull();
   if (!ctx?.__setPendingHeader) {
     throw new Error(
       '[authkit-tanstack-react-start] PKCE cookie could not be set: middleware context unavailable. Ensure authkitMiddleware is registered in your request middleware stack.',
     );
   }
-  ctx.__setPendingHeader('Set-Cookie', serializePKCESetCookie(result.cookieOptions, result.sealedState));
+
+  // Prefer the `headers` bag when present — it's the library's primary channel.
+  if (result.headers) {
+    for (const [key, value] of Object.entries(result.headers)) {
+      if (Array.isArray(value)) {
+        for (const v of value) ctx.__setPendingHeader(key, v);
+      } else if (typeof value === 'string') {
+        ctx.__setPendingHeader(key, value);
+      }
+    }
+  } else if (result.response) {
+    // Fallback: storage mutated the Response directly (context-unavailable path).
+    for (const value of result.response.headers.getSetCookie()) {
+      ctx.__setPendingHeader('Set-Cookie', value);
+    }
+  }
+
   return result.url;
 }
 
@@ -182,7 +207,7 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options = {} }) => {
     const authkit = await getAuthkit();
-    return writeCookieAndReturn(await authkit.getAuthorizationUrl(applyContextRedirectUri(options)));
+    return forwardAuthorizationCookies(await authkit.createAuthorization(undefined, applyContextRedirectUri(options)));
   });
 
 /** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
@@ -209,7 +234,7 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
     const authkit = await getAuthkit();
-    return writeCookieAndReturn(await authkit.getSignInUrl(applyContextRedirectUri(options)));
+    return forwardAuthorizationCookies(await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
   });
 
 /**
@@ -233,7 +258,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const options = typeof data === 'string' ? { returnPathname: data } : data;
     const authkit = await getAuthkit();
-    return writeCookieAndReturn(await authkit.getSignUpUrl(applyContextRedirectUri(options)));
+    return forwardAuthorizationCookies(await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
   });
 
 /**

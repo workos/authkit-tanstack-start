@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockHandleCallback = vi.fn();
 const mockWithAuth = vi.fn();
-const mockGetSignInUrl = vi.fn();
-const mockBuildPKCEDeleteCookieHeader = vi.fn(
-  () => 'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-);
+const mockCreateSignIn = vi.fn();
+const mockClearPendingVerifier = vi.fn(async () => ({
+  headers: {
+    'Set-Cookie':
+      'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+  },
+}));
 
 let mockGetAuthkitImpl: () => Promise<any>;
 
@@ -42,8 +45,8 @@ describe('handleCallbackRoute', () => {
       Promise.resolve({
         withAuth: mockWithAuth,
         handleCallback: mockHandleCallback,
-        getSignInUrl: mockGetSignInUrl,
-        buildPKCEDeleteCookieHeader: mockBuildPKCEDeleteCookieHeader,
+        createSignIn: mockCreateSignIn,
+        clearPendingVerifier: mockClearPendingVerifier,
       });
   });
 
@@ -110,43 +113,37 @@ describe('handleCallbackRoute', () => {
       expect(response.headers.get('Location')).toBe('http://example.com/custom');
     });
 
-    it('passes the PKCE cookie value from the request into authkit.handleCallback', async () => {
-      const sealedCookie = 'sealed-abc-123';
+    it('passes code and state to authkit.handleCallback without a cookieValue arg', async () => {
       const request = new Request('http://example.com/callback?code=auth_123&state=s', {
-        headers: { cookie: `wos-auth-verifier=${sealedCookie}` },
+        headers: { cookie: 'wos-auth-verifier=sealed-abc-123' },
       });
       mockHandleCallback.mockResolvedValue(successResult());
 
       await handleCallbackRoute()({ request });
 
-      expect(mockHandleCallback).toHaveBeenCalledWith(
-        request,
-        expect.any(Response),
-        expect.objectContaining({
-          code: 'auth_123',
-          state: 's',
-          cookieValue: sealedCookie,
-        }),
-      );
+      expect(mockHandleCallback).toHaveBeenCalledWith(request, expect.any(Response), { code: 'auth_123', state: 's' });
+      const passedOptions = mockHandleCallback.mock.calls[0]![2];
+      expect(passedOptions).not.toHaveProperty('cookieValue');
     });
 
-    it('passes undefined cookieValue when no PKCE cookie is present', async () => {
+    it('passes state as undefined when absent from the URL', async () => {
       const request = new Request('http://example.com/callback?code=auth_123');
       mockHandleCallback.mockResolvedValue(successResult());
 
       await handleCallbackRoute()({ request });
 
-      expect(mockHandleCallback).toHaveBeenCalledWith(
-        request,
-        expect.any(Response),
-        expect.objectContaining({ cookieValue: undefined }),
-      );
+      expect(mockHandleCallback).toHaveBeenCalledWith(request, expect.any(Response), {
+        code: 'auth_123',
+        state: undefined,
+      });
     });
 
-    it('appends both the session cookie and the PKCE delete cookie', async () => {
+    it('appends both the session cookie and the PKCE delete cookie from the library', async () => {
       const request = new Request('http://example.com/callback?code=auth_123');
       mockHandleCallback.mockResolvedValue({
-        headers: { 'Set-Cookie': 'wos-session=abc123' },
+        headers: {
+          'Set-Cookie': ['wos-session=abc123', 'wos-auth-verifier=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'],
+        },
         returnPathname: '/',
         state: undefined,
         authResponse: baseAuthResponse,

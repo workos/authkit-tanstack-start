@@ -3,13 +3,19 @@ import { getAuthKitContextOrNull } from './context.js';
 import { parseCookies } from './cookie-utils.js';
 
 export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Request, Response> {
-  async getSession(request: Request): Promise<string | null> {
+  async getCookie(request: Request, name: string): Promise<string | null> {
     const cookieHeader = request.headers.get('cookie');
     if (!cookieHeader) return null;
 
     const cookies = parseCookies(cookieHeader);
-    const value = cookies[this.cookieName];
-    return value ? decodeURIComponent(value) : null;
+    const raw = cookies[name];
+    if (raw === undefined) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      // Malformed percent-encoding — surface as missing rather than throwing.
+      return null;
+    }
   }
 
   protected async applyHeaders(

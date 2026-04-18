@@ -1,6 +1,10 @@
 import { getAuthkit } from './authkit-loader.js';
-import { decodeState } from './auth-helpers.js';
 import type { HandleCallbackOptions } from './types.js';
+
+const STATIC_FALLBACK_DELETE_HEADERS: readonly string[] = [
+  'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+  'wos-auth-verifier=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+];
 
 /**
  * Creates a callback route handler for OAuth authentication.
@@ -33,9 +37,7 @@ import type { HandleCallbackOptions } from './types.js';
  *     handlers: {
  *       GET: handleCallbackRoute({
  *         onSuccess: async ({ user, authenticationMethod }) => {
- *           // Create user record in your database
  *           await db.users.upsert({ id: user.id, email: user.email });
- *           // Track analytics
  *           analytics.track('User Signed In', { method: authenticationMethod });
  *         },
  *       }),
@@ -50,72 +52,112 @@ export function handleCallbackRoute(options: HandleCallbackOptions = {}) {
   };
 }
 
+/**
+ * Extract the `Set-Cookie` header(s) produced by `authkit.clearPendingVerifier()`
+ * so we can attach them to whatever response we emit on an error path.
+ *
+ * The library returns a `HeadersBag` whose `Set-Cookie` is either a string or a
+ * `string[]`. We coerce to an array so callers can append each entry in turn.
+ */
+async function buildVerifierDeleteHeaders(authkit: Awaited<ReturnType<typeof getAuthkit>>): Promise<readonly string[]> {
+  try {
+    const { headers } = await authkit.clearPendingVerifier(new Response());
+    const setCookie = headers?.['Set-Cookie'];
+    if (!setCookie) return STATIC_FALLBACK_DELETE_HEADERS;
+    return Array.isArray(setCookie) ? setCookie : [setCookie];
+  } catch (error) {
+    console.error('[authkit-tanstack-react-start] clearPendingVerifier failed:', error);
+    return STATIC_FALLBACK_DELETE_HEADERS;
+  }
+}
+
 async function handleCallbackInternal(request: Request, options: HandleCallbackOptions): Promise<Response> {
+  let deleteCookieHeaders: readonly string[] = STATIC_FALLBACK_DELETE_HEADERS;
+  let authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined;
+
+  try {
+    authkit = await getAuthkit();
+    deleteCookieHeaders = await buildVerifierDeleteHeaders(authkit);
+  } catch (setupError) {
+    console.error('[authkit-tanstack-react-start] Callback setup failed:', setupError);
+  }
+
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
 
   if (!code) {
-    if (options.onError) {
-      return options.onError({ error: new Error('Missing authorization code'), request });
-    }
-
-    return new Response(JSON.stringify({ error: { message: 'Missing authorization code' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return errorResponse(new Error('Missing authorization code'), request, options, deleteCookieHeaders, 400);
+  }
+  if (!authkit) {
+    return errorResponse(new Error('AuthKit not initialized'), request, options, deleteCookieHeaders, 500);
   }
 
   try {
-    const { returnPathname: stateReturnPathname, customState } = decodeState(state);
-    const returnPathname = options.returnPathname ?? stateReturnPathname;
-
     const response = new Response();
-    const authkit = await getAuthkit();
-    const result = await authkit.handleCallback(request, response, { code, state: state ?? undefined });
-    const { authResponse } = result;
+    const result = await authkit.handleCallback(request, response, {
+      code,
+      state: state ?? undefined,
+    });
 
     if (options.onSuccess) {
       await options.onSuccess({
-        accessToken: authResponse.accessToken,
-        refreshToken: authResponse.refreshToken,
-        user: authResponse.user,
-        impersonator: authResponse.impersonator,
-        oauthTokens: authResponse.oauthTokens,
-        authenticationMethod: authResponse.authenticationMethod,
-        organizationId: authResponse.organizationId,
-        state: customState,
+        accessToken: result.authResponse.accessToken,
+        refreshToken: result.authResponse.refreshToken,
+        user: result.authResponse.user,
+        impersonator: result.authResponse.impersonator,
+        oauthTokens: result.authResponse.oauthTokens,
+        authenticationMethod: result.authResponse.authenticationMethod,
+        organizationId: result.authResponse.organizationId,
+        state: result.state,
       });
     }
 
+    const returnPathname = options.returnPathname ?? result.returnPathname ?? '/';
     const redirectUrl = buildRedirectUrl(url, returnPathname);
-    const sessionHeaders = extractSessionHeaders(result);
 
-    return new Response(null, {
-      status: 307,
-      headers: {
-        Location: redirectUrl.toString(),
-        ...sessionHeaders,
-      },
-    });
+    const headers = new Headers({ Location: redirectUrl.toString() });
+    // `result` now carries BOTH the session Set-Cookie and the verifier-delete
+    // Set-Cookie as a `string[]`. `appendSessionHeaders` preserves each entry
+    // via `.append` so they survive as distinct HTTP headers.
+    appendSessionHeaders(headers, result);
+
+    return new Response(null, { status: 307, headers });
   } catch (error) {
     console.error('OAuth callback failed:', error);
-
-    if (options.onError) {
-      return options.onError({ error, request });
-    }
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          message: 'Authentication failed',
-          description: "Couldn't sign in. Please contact your organization admin if the issue persists.",
-          details: error instanceof Error ? error.message : String(error),
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    );
+    return errorResponse(error, request, options, deleteCookieHeaders, 500);
   }
+}
+
+async function errorResponse(
+  error: unknown,
+  request: Request,
+  options: HandleCallbackOptions,
+  deleteCookieHeaders: readonly string[],
+  defaultStatus: number,
+): Promise<Response> {
+  if (options.onError) {
+    const userResponse = await options.onError({ error, request });
+    const headers = new Headers(userResponse.headers);
+    for (const h of deleteCookieHeaders) headers.append('Set-Cookie', h);
+    return new Response(userResponse.body, {
+      status: userResponse.status,
+      statusText: userResponse.statusText,
+      headers,
+    });
+  }
+
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  for (const h of deleteCookieHeaders) headers.append('Set-Cookie', h);
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: 'Authentication failed',
+        description: "Couldn't sign in. Please contact your organization admin if the issue persists.",
+      },
+    }),
+    { status: defaultStatus, headers },
+  );
 }
 
 function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
@@ -134,15 +176,31 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
-function extractSessionHeaders(result: any): Record<string, string> {
-  const setCookie = result?.response?.headers?.get?.('Set-Cookie');
-  if (setCookie) {
-    return { 'Set-Cookie': setCookie };
-  }
-
+function appendSessionHeaders(target: Headers, result: any): void {
+  // Prefer the plain-object `headers` bag when present — it's the library's
+  // primary channel and carries a `string[]` when multiple cookies are emitted.
   if (result?.headers && typeof result.headers === 'object') {
-    return result.headers;
+    for (const [key, value] of Object.entries(result.headers)) {
+      if (typeof value === 'string') {
+        target.append(key, value);
+      } else if (Array.isArray(value)) {
+        for (const v of value) {
+          target.append(key, typeof v === 'string' ? v : String(v));
+        }
+      }
+    }
+    return;
   }
 
-  return {};
+  // Fallback: the library routed its output through a mutated Response
+  // (storage's context-unavailable path).
+  const responseHeaders: Headers | undefined = result?.response?.headers;
+  if (responseHeaders && typeof responseHeaders.getSetCookie === 'function') {
+    for (const value of responseHeaders.getSetCookie()) {
+      target.append('Set-Cookie', value);
+    }
+  } else if (responseHeaders && typeof responseHeaders.get === 'function') {
+    const setCookie = responseHeaders.get('Set-Cookie');
+    if (setCookie) target.append('Set-Cookie', setCookie);
+  }
 }

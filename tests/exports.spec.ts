@@ -16,6 +16,10 @@ describe('SDK exports', () => {
 
     // Middleware
     expect(exports.authkitMiddleware).toBeDefined();
+
+    // Error classes re-exported from authkit-session for adopter error handling
+    expect(exports.OAuthStateMismatchError).toBeDefined();
+    expect(exports.PKCECookieMissingError).toBeDefined();
   });
 
   it('exports expected types', () => {

@@ -1,14 +1,21 @@
 import { CookieSessionStorage } from '@workos/authkit-session';
 import { getAuthKitContextOrNull } from './context.js';
+import { parseCookies } from './cookie-utils.js';
 
 export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Request, Response> {
-  async getSession(request: Request): Promise<string | null> {
+  async getCookie(request: Request, name: string): Promise<string | null> {
     const cookieHeader = request.headers.get('cookie');
     if (!cookieHeader) return null;
 
-    const cookies = this.parseCookies(cookieHeader);
-    const value = cookies[this.cookieName];
-    return value ? decodeURIComponent(value) : null;
+    const cookies = parseCookies(cookieHeader);
+    const raw = cookies[name];
+    if (raw === undefined) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      // Malformed percent-encoding — surface as missing rather than throwing.
+      return null;
+    }
   }
 
   protected async applyHeaders(
@@ -35,14 +42,5 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
 
     Object.entries(headers).forEach(([key, value]) => newResponse.headers.append(key, value));
     return { response: newResponse };
-  }
-
-  private parseCookies(cookieHeader: string): Record<string, string> {
-    return Object.fromEntries(
-      cookieHeader.split(';').map((cookie) => {
-        const [key, ...valueParts] = cookie.trim().split('=');
-        return [key, valueParts.join('=')];
-      }),
-    );
   }
 }

@@ -1,4 +1,6 @@
+import type { HeadersBag } from '@workos/authkit-session';
 import { getAuthkit } from './authkit-loader.js';
+import { forEachHeaderBagEntry } from './headers-bag.js';
 import type { HandleCallbackOptions } from './types.js';
 
 const STATIC_FALLBACK_DELETE_HEADERS: readonly string[] = [
@@ -117,9 +119,6 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
     const redirectUrl = buildRedirectUrl(url, returnPathname);
 
     const headers = new Headers({ Location: redirectUrl.toString() });
-    // `result` now carries BOTH the session Set-Cookie and the verifier-delete
-    // Set-Cookie as a `string[]`. `appendSessionHeaders` preserves each entry
-    // via `.append` so they survive as distinct HTTP headers.
     appendSessionHeaders(headers, result);
 
     return new Response(null, { status: 307, headers });
@@ -176,25 +175,18 @@ function buildRedirectUrl(originalUrl: URL, returnPathname: string): URL {
   return url;
 }
 
-function appendSessionHeaders(target: Headers, result: any): void {
-  // Prefer the plain-object `headers` bag when present — it's the library's
-  // primary channel and carries a `string[]` when multiple cookies are emitted.
-  if (result?.headers && typeof result.headers === 'object') {
-    for (const [key, value] of Object.entries(result.headers)) {
-      if (typeof value === 'string') {
-        target.append(key, value);
-      } else if (Array.isArray(value)) {
-        for (const v of value) {
-          target.append(key, typeof v === 'string' ? v : String(v));
-        }
-      }
-    }
+function appendSessionHeaders(
+  target: Headers,
+  result: { headers?: HeadersBag; response?: { headers?: Headers } },
+): void {
+  if (result.headers) {
+    forEachHeaderBagEntry(result.headers, (key, value) => target.append(key, value));
     return;
   }
 
   // Fallback: the library routed its output through a mutated Response
   // (storage's context-unavailable path).
-  const responseHeaders: Headers | undefined = result?.response?.headers;
+  const responseHeaders = result.response?.headers;
   if (responseHeaders && typeof responseHeaders.getSetCookie === 'function') {
     for (const value of responseHeaders.getSetCookie()) {
       target.append('Set-Cookie', value);

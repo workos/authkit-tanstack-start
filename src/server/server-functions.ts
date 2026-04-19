@@ -7,6 +7,7 @@ import { getAuthKitContextOrNull } from './context.js';
 
 // Type-only import - safe for bundling
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
+import { forEachHeaderBagEntry } from './headers-bag.js';
 
 type AuthorizationResult = {
   url: string;
@@ -29,15 +30,8 @@ function forwardAuthorizationCookies(result: AuthorizationResult): string {
     );
   }
 
-  // Prefer the `headers` bag when present — it's the library's primary channel.
   if (result.headers) {
-    for (const [key, value] of Object.entries(result.headers)) {
-      if (Array.isArray(value)) {
-        for (const v of value) ctx.__setPendingHeader(key, v);
-      } else if (typeof value === 'string') {
-        ctx.__setPendingHeader(key, value);
-      }
-    }
+    forEachHeaderBagEntry(result.headers, ctx.__setPendingHeader);
   } else if (result.response) {
     // Fallback: storage mutated the Response directly (context-unavailable path).
     for (const value of result.response.headers.getSetCookie()) {
@@ -133,13 +127,7 @@ export const signOut = createServerFn({ method: 'POST' })
     // Convert HeadersBag to Headers for TanStack compatibility
     const headers = new Headers();
     if (headersBag) {
-      for (const [key, value] of Object.entries(headersBag)) {
-        if (Array.isArray(value)) {
-          value.forEach((v) => headers.append(key, v));
-        } else {
-          headers.set(key, value);
-        }
-      }
+      forEachHeaderBagEntry(headersBag, (key, value) => headers.append(key, value));
     }
 
     // Clear session and redirect to WorkOS logout

@@ -3,17 +3,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockHandleCallback = vi.fn();
 const mockWithAuth = vi.fn();
 const mockCreateSignIn = vi.fn();
-const mockClearPendingVerifier = vi.fn(async () => ({
-  headers: {
-    'Set-Cookie':
-      'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-  },
-}));
+type ClearPendingVerifierResult = { response?: Response; headers?: { 'Set-Cookie'?: string | string[] } };
+const mockClearPendingVerifier = vi.fn(
+  async (): Promise<ClearPendingVerifierResult> => ({
+    headers: {
+      'Set-Cookie':
+        'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+    },
+  }),
+);
 
 let mockGetAuthkitImpl: () => Promise<any>;
+let mockRedirectUriFromContext: string | undefined;
 
 vi.mock('./authkit-loader', () => ({
   getAuthkit: vi.fn(() => mockGetAuthkitImpl()),
+}));
+
+vi.mock('./auth-helpers', () => ({
+  getRedirectUriFromContext: vi.fn(() => mockRedirectUriFromContext),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -41,6 +49,7 @@ const successResult = (overrides: Record<string, unknown> = {}) => ({
 describe('handleCallbackRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRedirectUriFromContext = undefined;
     mockGetAuthkitImpl = () =>
       Promise.resolve({
         withAuth: mockWithAuth,
@@ -273,6 +282,33 @@ describe('handleCallbackRoute', () => {
 
       expect(response.status).toBe(400);
       expect(response.headers.getSetCookie()).toEqual([scopedDelete]);
+    });
+
+    it('forwards middleware-scoped redirectUri to clearPendingVerifier so Path matches the set cookie', async () => {
+      // The test above asserts the *extracted* header propagates, but not
+      // that the adapter computed the correct Path. This one proves we pass
+      // the per-request `redirectUri` from middleware context into upstream
+      // so the delete cookie's Path matches what `createSignIn` originally
+      // set. Without this, a failed callback after
+      // `authkitMiddleware({ redirectUri })` would emit a `Path=/` delete
+      // that doesn't match the scoped cookie the browser actually holds.
+      mockRedirectUriFromContext = 'https://app.example.com/custom/callback';
+
+      const request = new Request('http://example.com/callback');
+      await handleCallbackRoute()({ request });
+
+      expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), {
+        redirectUri: 'https://app.example.com/custom/callback',
+      });
+    });
+
+    it('passes no options when middleware context has no redirectUri override', async () => {
+      mockRedirectUriFromContext = undefined;
+
+      const request = new Request('http://example.com/callback');
+      await handleCallbackRoute()({ request });
+
+      expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), undefined);
     });
 
     it('emits static fallback delete-cookies when getAuthkit() rejects', async () => {

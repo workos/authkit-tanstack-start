@@ -1,5 +1,6 @@
 import type { HeadersBag } from '@workos/authkit-session';
 import { getAuthkit } from './authkit-loader.js';
+import { getRedirectUriFromContext } from './auth-helpers.js';
 import { forEachHeaderBagEntry } from './headers-bag.js';
 import type { HandleCallbackOptions } from './types.js';
 
@@ -58,15 +59,24 @@ export function handleCallbackRoute(options: HandleCallbackOptions = {}) {
  * Extract the `Set-Cookie` header(s) produced by `authkit.clearPendingVerifier()`
  * so we can attach them to whatever response we emit on an error path.
  *
- * This adapter's storage overrides `applyHeaders`, so `clearCookie` returns
- * `{ response }` with the `Set-Cookie` attached to the response — the
- * `headers` bag is empty in that path. Prefer reading from the response,
- * fall back to the headers bag, then to the static delete as a last resort.
- * This preserves per-request `redirectUri`-scoped `Path` attributes.
+ * Two things matter here:
+ *   1. The delete cookie's `Path` must match whatever `redirectUri` was used
+ *      to set it. `authkitMiddleware({ redirectUri })` scopes the verifier
+ *      cookie to that URI's path — we pass the same override to
+ *      `clearPendingVerifier` so the delete targets the same `Path`.
+ *   2. This adapter's storage overrides `applyHeaders`, so `clearCookie`
+ *      returns `{ response }` with the `Set-Cookie` attached to the
+ *      response — the `headers` bag is empty in that path. Prefer reading
+ *      from the response, fall back to the headers bag, then to the static
+ *      delete as a last resort.
  */
 async function buildVerifierDeleteHeaders(authkit: Awaited<ReturnType<typeof getAuthkit>>): Promise<readonly string[]> {
   try {
-    const { response, headers } = await authkit.clearPendingVerifier(new Response());
+    const redirectUri = getRedirectUriFromContext();
+    const { response, headers } = await authkit.clearPendingVerifier(
+      new Response(),
+      redirectUri ? { redirectUri } : undefined,
+    );
     const fromResponse = response?.headers.getSetCookie?.() ?? [];
     if (fromResponse.length > 0) return fromResponse;
     const fromBag = headers?.['Set-Cookie'];

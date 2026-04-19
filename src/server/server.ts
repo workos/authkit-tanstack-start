@@ -58,15 +58,20 @@ export function handleCallbackRoute(options: HandleCallbackOptions = {}) {
  * Extract the `Set-Cookie` header(s) produced by `authkit.clearPendingVerifier()`
  * so we can attach them to whatever response we emit on an error path.
  *
- * The library returns a `HeadersBag` whose `Set-Cookie` is either a string or a
- * `string[]`. We coerce to an array so callers can append each entry in turn.
+ * This adapter's storage overrides `applyHeaders`, so `clearCookie` returns
+ * `{ response }` with the `Set-Cookie` attached to the response — the
+ * `headers` bag is empty in that path. Prefer reading from the response,
+ * fall back to the headers bag, then to the static delete as a last resort.
+ * This preserves per-request `redirectUri`-scoped `Path` attributes.
  */
 async function buildVerifierDeleteHeaders(authkit: Awaited<ReturnType<typeof getAuthkit>>): Promise<readonly string[]> {
   try {
-    const { headers } = await authkit.clearPendingVerifier(new Response());
-    const setCookie = headers?.['Set-Cookie'];
-    if (!setCookie) return STATIC_FALLBACK_DELETE_HEADERS;
-    return Array.isArray(setCookie) ? setCookie : [setCookie];
+    const { response, headers } = await authkit.clearPendingVerifier(new Response());
+    const fromResponse = response?.headers.getSetCookie?.() ?? [];
+    if (fromResponse.length > 0) return fromResponse;
+    const fromBag = headers?.['Set-Cookie'];
+    if (fromBag) return Array.isArray(fromBag) ? fromBag : [fromBag];
+    return STATIC_FALLBACK_DELETE_HEADERS;
   } catch (error) {
     console.error('[authkit-tanstack-react-start] clearPendingVerifier failed:', error);
     return STATIC_FALLBACK_DELETE_HEADERS;

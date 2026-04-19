@@ -257,6 +257,24 @@ describe('handleCallbackRoute', () => {
       consoleSpy.mockRestore();
     });
 
+    it('reads verifier-delete header from clearPendingVerifier response when headers bag is empty', async () => {
+      // The real adapter's storage override returns `{ response }` with the
+      // Set-Cookie attached to the response, never populating the headers
+      // bag. The static fallback would lose per-request `redirectUri`-scoped
+      // Path. Simulate that shape and assert the delete rides through.
+      const scopedDelete =
+        'wos-auth-verifier=; Path=/custom/callback; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      const mutatedResponse = new Response();
+      mutatedResponse.headers.append('Set-Cookie', scopedDelete);
+      mockClearPendingVerifier.mockResolvedValueOnce({ response: mutatedResponse });
+
+      const request = new Request('http://example.com/callback');
+      const response = await handleCallbackRoute()({ request });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.getSetCookie()).toEqual([scopedDelete]);
+    });
+
     it('emits static fallback delete-cookies when getAuthkit() rejects', async () => {
       const request = new Request('http://example.com/callback?code=auth_123');
       mockGetAuthkitImpl = () => Promise.reject(new Error('Config missing'));

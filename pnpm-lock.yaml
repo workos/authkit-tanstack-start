@@ -4,16 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@workos/authkit-session': link:../authkit-session
-
 importers:
 
   .:
     dependencies:
       '@workos/authkit-session':
-        specifier: link:../authkit-session
-        version: link:../authkit-session
+        specifier: 0.4.0
+        version: 0.4.0(typescript@5.9.3)
     devDependencies:
       '@tanstack/react-router':
         specifier: ^1.154.8
@@ -2029,6 +2026,14 @@ packages:
   '@vitest/utils@4.0.15':
     resolution: {integrity: sha512-HXjPW2w5dxhTD0dLwtYHDnelK3j8sR8cWIaLxr22evTyY6q8pRCjZSmhRWVjBaOVXChQd6AwMzi9pucorXCPZA==}
 
+  '@workos-inc/node@8.13.0':
+    resolution: {integrity: sha512-NgQKHpwh8AbT4KvAsW91Y+4f4jja2IvFPQ5atcy5NUxUMVRgXzRFEee3erawfXrTmiCVqJjd9PljHySKBXmHKQ==}
+    engines: {node: '>=20.15.0'}
+
+  '@workos/authkit-session@0.4.0':
+    resolution: {integrity: sha512-s6wwsUZFlY4cvudouKAD7oRQSYAaeBblCafDu1HZhxsnhCQ/ddSsr4OjrTurmckGC6Xsph7Mm7uEe+++QOaTvQ==}
+    engines: {node: '>=20.0.0'}
+
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
@@ -2263,6 +2268,9 @@ packages:
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
 
+  eventemitter3@5.0.4:
+    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
+
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
     engines: {node: '>=12.0.0'}
@@ -2359,6 +2367,9 @@ packages:
 
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
+
+  iron-webcrypto@2.0.0:
+    resolution: {integrity: sha512-rtffZKDUHciZElM8mjFCufBC7nVhCxHYyWHESqs89OioEDz4parOofd8/uhrejh/INhQFfYQfByS22LlezR9sQ==}
 
   is-binary-path@2.1.0:
     resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
@@ -2834,6 +2845,10 @@ packages:
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
+  uint8array-extras@1.5.0:
+    resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
+    engines: {node: '>=18'}
+
   uncrypto@0.1.3:
     resolution: {integrity: sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==}
 
@@ -2878,6 +2893,14 @@ packages:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  valibot@1.3.1:
+    resolution: {integrity: sha512-sfdRir/QFM0JaF22hqTroPc5xy4DimuGQVKFrzF1YfGwaS1nJot3Y8VqMdLO2Lg27fMzat2yD3pY5PbAYO39Gg==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   vite-tsconfig-paths@5.1.4:
     resolution: {integrity: sha512-cYj0LRuLV2c2sMqhqhGpaO3LretdtMn/BVX4cPLanIZuwwrkVl+lK84E/miEXkCHWXuq65rhNN4rXsBcOB3S4w==}
@@ -4747,6 +4770,19 @@ snapshots:
       '@vitest/pretty-format': 4.0.15
       tinyrainbow: 3.0.3
 
+  '@workos-inc/node@8.13.0':
+    dependencies:
+      eventemitter3: 5.0.4
+
+  '@workos/authkit-session@0.4.0(typescript@5.9.3)':
+    dependencies:
+      '@workos-inc/node': 8.13.0
+      iron-webcrypto: 2.0.0
+      jose: 6.1.3
+      valibot: 1.3.1(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
   acorn@8.15.0: {}
 
   ansi-regex@5.0.1: {}
@@ -5015,6 +5051,8 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.8
 
+  eventemitter3@5.0.4: {}
+
   expect-type@1.3.0: {}
 
   exsolve@1.0.8: {}
@@ -5101,6 +5139,10 @@ snapshots:
       uncrypto: 0.1.3
 
   iron-webcrypto@1.2.1: {}
+
+  iron-webcrypto@2.0.0:
+    dependencies:
+      uint8array-extras: 1.5.0
 
   is-binary-path@2.1.0:
     dependencies:
@@ -5633,6 +5675,8 @@ snapshots:
 
   ufo@1.6.1: {}
 
+  uint8array-extras@1.5.0: {}
+
   uncrypto@0.1.3: {}
 
   undici-types@7.18.2: {}
@@ -5670,6 +5714,10 @@ snapshots:
   use-sync-external-store@1.6.0(react@19.2.3):
     dependencies:
       react: 19.2.3
+
+  valibot@1.3.1(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   vite-tsconfig-paths@5.1.4(typescript@5.9.3)(vite@7.3.2(@types/node@25.5.2)(tsx@4.21.0)):
     dependencies:

@@ -97,9 +97,6 @@
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "esbuild"
-    ],
-    "overrides": {
-      "@workos/authkit-session": "link:../authkit-session"
-    }
+    ]
   }
 }

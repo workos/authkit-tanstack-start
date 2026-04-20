@@ -37,6 +37,14 @@ function forwardAuthorizationCookies(result: AuthorizationResult): string {
     for (const value of result.response.headers.getSetCookie()) {
       ctx.__setPendingHeader('Set-Cookie', value);
     }
+  } else {
+    // Defensive: upstream contract says one of `headers` or `response` is
+    // always populated. If both are missing we'd silently drop the PKCE
+    // verifier cookie and the failure would only surface as a state mismatch
+    // in the callback — fail loudly now so the real cause is visible.
+    throw new Error(
+      '[authkit-tanstack-react-start] authorization result had neither headers nor response; PKCE verifier cookie could not be forwarded. This indicates a version mismatch with @workos/authkit-session.',
+    );
   }
 
   return result.url;

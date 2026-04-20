@@ -533,6 +533,18 @@ describe('Server Functions', () => {
 
           await expect(call()).rejects.toThrow(/authkitMiddleware is registered/);
         });
+
+        it('does not throw when storage returns an empty response (cookies pushed via ctx)', async () => {
+          // Real runtime shape: the storage adapter forwards cookies directly
+          // through `ctx.__setPendingHeader` and hands back `{ response: new
+          // Response() }` as a contract stub — no `headers`, no Set-Cookie on
+          // the response. That must not be treated as a contract violation.
+          mockFn().mockResolvedValue({ url, response: new Response() });
+
+          const result = await call();
+
+          expect(result).toBe(url);
+        });
       });
     });
   });

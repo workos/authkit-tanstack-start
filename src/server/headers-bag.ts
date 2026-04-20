@@ -18,8 +18,10 @@ export function forEachHeaderBagEntry(bag: HeadersBag, emit: (key: string, value
 /**
  * Emit cookies/headers from an upstream result that may carry them in either a
  * `HeadersBag` or a mutated `Response` (storage's context-unavailable fallback
- * path). Returns `true` if anything was emitted, so callers can choose between
- * silent no-op and throwing.
+ * path). Returns `true` if the upstream contract was met — i.e. one of
+ * `headers` or `response` was present — even when zero cookies were emitted.
+ * Zero-emit is a valid outcome when storage already forwarded cookies
+ * out-of-band via middleware context and returns a bare `Response` as a stub.
  */
 export function emitHeadersFrom(
   source: { headers?: HeadersBag; response?: { headers?: Headers } },
@@ -29,19 +31,13 @@ export function emitHeadersFrom(
     forEachHeaderBagEntry(source.headers, emit);
     return true;
   }
-  const responseHeaders = source.response?.headers;
-  if (!responseHeaders) return false;
-  if (typeof responseHeaders.getSetCookie === 'function') {
-    const setCookies = responseHeaders.getSetCookie();
-    for (const value of setCookies) emit('Set-Cookie', value);
-    return setCookies.length > 0;
-  }
-  if (typeof responseHeaders.get === 'function') {
+  if (!source.response) return false;
+  const responseHeaders = source.response.headers;
+  if (responseHeaders && typeof responseHeaders.getSetCookie === 'function') {
+    for (const value of responseHeaders.getSetCookie()) emit('Set-Cookie', value);
+  } else if (responseHeaders && typeof responseHeaders.get === 'function') {
     const setCookie = responseHeaders.get('Set-Cookie');
-    if (setCookie) {
-      emit('Set-Cookie', setCookie);
-      return true;
-    }
+    if (setCookie) emit('Set-Cookie', setCookie);
   }
-  return false;
+  return true;
 }

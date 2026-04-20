@@ -148,15 +148,14 @@ Use `getAuth()` in route loaders or server functions to access the current sessi
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import { getAuth } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/dashboard')({
   loader: async () => {
     const { user } = await getAuth();
 
     if (!user) {
-      const signInUrl = await getSignInUrl();
-      throw redirect({ href: signInUrl });
+      throw redirect({ href: '/api/auth/sign-in' });
     }
 
     return { user };
@@ -250,17 +249,15 @@ Use layout routes to protect multiple pages:
 ```typescript
 // src/routes/_authenticated.tsx
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import { getAuth } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated')({
   loader: async ({ location }) => {
     const { user } = await getAuth();
 
     if (!user) {
-      const signInUrl = await getSignInUrl({
-        data: { returnPathname: location.pathname },
-      });
-      throw redirect({ href: signInUrl });
+      const returnPathname = encodeURIComponent(location.pathname);
+      throw redirect({ href: `/api/auth/sign-in?returnPathname=${returnPathname}` });
     }
 
     return { user };
@@ -629,22 +626,22 @@ function ProfilePage() {
 
 ### Sign In Flow
 
+Link to the sign-in endpoint you created in setup step 3. The endpoint handles generating the AuthKit URL and setting the PKCE cookie.
+
 ```typescript
-// Get sign-in URL in loader
 export const Route = createFileRoute('/')({
   loader: async () => {
     const { user } = await getAuth();
-    const signInUrl = await getSignInUrl();
-    return { user, signInUrl };
+    return { user };
   },
   component: HomePage,
 });
 
 function HomePage() {
-  const { user, signInUrl } = Route.useLoaderData();
+  const { user } = Route.useLoaderData();
 
   if (!user) {
-    return <a href={signInUrl}>Sign In with AuthKit</a>;
+    return <a href="/api/auth/sign-in">Sign In with AuthKit</a>;
   }
 
   return <div>Welcome, {user.firstName}!</div>;
@@ -656,17 +653,15 @@ function HomePage() {
 ```typescript
 // src/routes/_authenticated.tsx
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import { getAuth } from '@workos/authkit-tanstack-react-start';
 
 export const Route = createFileRoute('/_authenticated')({
   loader: async ({ location }) => {
     const { user } = await getAuth();
 
     if (!user) {
-      const signInUrl = await getSignInUrl({
-        data: { returnPathname: location.pathname },
-      });
-      throw redirect({ href: signInUrl });
+      const returnPathname = encodeURIComponent(location.pathname);
+      throw redirect({ href: `/api/auth/sign-in?returnPathname=${returnPathname}` });
     }
 
     return { user };

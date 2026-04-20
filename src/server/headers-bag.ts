@@ -14,3 +14,34 @@ export function forEachHeaderBagEntry(bag: HeadersBag, emit: (key: string, value
     }
   }
 }
+
+/**
+ * Emit cookies/headers from an upstream result that may carry them in either a
+ * `HeadersBag` or a mutated `Response` (storage's context-unavailable fallback
+ * path). Returns `true` if anything was emitted, so callers can choose between
+ * silent no-op and throwing.
+ */
+export function emitHeadersFrom(
+  source: { headers?: HeadersBag; response?: { headers?: Headers } },
+  emit: (key: string, value: string) => void,
+): boolean {
+  if (source.headers) {
+    forEachHeaderBagEntry(source.headers, emit);
+    return true;
+  }
+  const responseHeaders = source.response?.headers;
+  if (!responseHeaders) return false;
+  if (typeof responseHeaders.getSetCookie === 'function') {
+    const setCookies = responseHeaders.getSetCookie();
+    for (const value of setCookies) emit('Set-Cookie', value);
+    return setCookies.length > 0;
+  }
+  if (typeof responseHeaders.get === 'function') {
+    const setCookie = responseHeaders.get('Set-Cookie');
+    if (setCookie) {
+      emit('Set-Cookie', setCookie);
+      return true;
+    }
+  }
+  return false;
+}

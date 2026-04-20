@@ -1,7 +1,7 @@
 import type { HeadersBag } from '@workos/authkit-session';
 import { getAuthkit } from './authkit-loader.js';
 import { getRedirectUriFromContext } from './auth-helpers.js';
-import { forEachHeaderBagEntry } from './headers-bag.js';
+import { emitHeadersFrom } from './headers-bag.js';
 import type { HandleCallbackOptions } from './types.js';
 
 const STATIC_FALLBACK_DELETE_HEADERS: readonly string[] = [
@@ -89,12 +89,10 @@ async function buildVerifierDeleteHeaders(authkit: Awaited<ReturnType<typeof get
 }
 
 async function handleCallbackInternal(request: Request, options: HandleCallbackOptions): Promise<Response> {
-  let deleteCookieHeaders: readonly string[] = STATIC_FALLBACK_DELETE_HEADERS;
   let authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined;
 
   try {
     authkit = await getAuthkit();
-    deleteCookieHeaders = await buildVerifierDeleteHeaders(authkit);
   } catch (setupError) {
     console.error('[authkit-tanstack-react-start] Callback setup failed:', setupError);
   }
@@ -104,10 +102,10 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   const state = url.searchParams.get('state');
 
   if (!code) {
-    return errorResponse(new Error('Missing authorization code'), request, options, deleteCookieHeaders, 400);
+    return errorResponse(new Error('Missing authorization code'), request, options, authkit, 400);
   }
   if (!authkit) {
-    return errorResponse(new Error('AuthKit not initialized'), request, options, deleteCookieHeaders, 500);
+    return errorResponse(new Error('AuthKit not initialized'), request, options, authkit, 500);
   }
 
   try {
@@ -139,7 +137,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
     return new Response(null, { status: 307, headers });
   } catch (error) {
     console.error('OAuth callback failed:', error);
-    return errorResponse(error, request, options, deleteCookieHeaders, 500);
+    return errorResponse(error, request, options, authkit, 500);
   }
 }
 
@@ -147,9 +145,13 @@ async function errorResponse(
   error: unknown,
   request: Request,
   options: HandleCallbackOptions,
-  deleteCookieHeaders: readonly string[],
+  authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined,
   defaultStatus: number,
 ): Promise<Response> {
+  // Only the error path needs delete-cookie headers, so skip the
+  // clearPendingVerifier round-trip on the happy path.
+  const deleteCookieHeaders = authkit ? await buildVerifierDeleteHeaders(authkit) : STATIC_FALLBACK_DELETE_HEADERS;
+
   if (options.onError) {
     const userResponse = await options.onError({ error, request });
     const headers = new Headers(userResponse.headers);
@@ -194,20 +196,5 @@ function appendSessionHeaders(
   target: Headers,
   result: { headers?: HeadersBag; response?: { headers?: Headers } },
 ): void {
-  if (result.headers) {
-    forEachHeaderBagEntry(result.headers, (key, value) => target.append(key, value));
-    return;
-  }
-
-  // Fallback: the library routed its output through a mutated Response
-  // (storage's context-unavailable path).
-  const responseHeaders = result.response?.headers;
-  if (responseHeaders && typeof responseHeaders.getSetCookie === 'function') {
-    for (const value of responseHeaders.getSetCookie()) {
-      target.append('Set-Cookie', value);
-    }
-  } else if (responseHeaders && typeof responseHeaders.get === 'function') {
-    const setCookie = responseHeaders.get('Set-Cookie');
-    if (setCookie) target.append('Set-Cookie', setCookie);
-  }
+  emitHeadersFrom(result, (key, value) => target.append(key, value));
 }

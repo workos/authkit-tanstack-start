@@ -14,8 +14,9 @@ describe('parseCookies', () => {
     expect(parseCookies('token=base64==padding==')).toEqual({ token: 'base64==padding==' });
   });
 
-  it('returns an empty entry for an empty header', () => {
-    expect(parseCookies('')).toEqual({ '': '' });
+  it('returns an empty object for an empty header', () => {
+    expect(parseCookies('')).toEqual({});
+    expect(parseCookies('   ')).toEqual({});
   });
 
   it('trims whitespace around each pair', () => {

@@ -5,9 +5,6 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: vi.fn(() => new Request('http://test.local')),
 }));
 
-// Upstream's new shape: `{ url, response?, headers? }`. Matches the library's
-// storage-owned cookie flow — the adapter is no longer in the business of
-// serializing the PKCE verifier cookie itself.
 const authorizationResult = (url: string) => ({
   url,
   headers: {

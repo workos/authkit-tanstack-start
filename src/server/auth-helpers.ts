@@ -90,26 +90,3 @@ export async function refreshSession(organizationId?: string) {
 
   return result;
 }
-
-/**
- * Decodes a state parameter from OAuth callback.
- * Format: base64EncodedInternal.customUserState (dot-separated)
- */
-export function decodeState(state: string | null): { returnPathname: string; customState?: string } {
-  if (!state || state === 'null') {
-    return { returnPathname: '/' };
-  }
-
-  const [internal, ...rest] = state.split('.');
-  const customState = rest.length > 0 ? rest.join('.') : undefined;
-
-  try {
-    const decoded = JSON.parse(atob(internal));
-    return {
-      returnPathname: decoded.returnPathname || '/',
-      customState,
-    };
-  } catch {
-    return { returnPathname: '/', customState: customState ?? state };
-  }
-}

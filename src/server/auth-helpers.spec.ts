@@ -23,13 +23,7 @@ vi.mock('./authkit-loader', () => ({
   getAuthkit: vi.fn(() => Promise.resolve(mockAuthkit)),
 }));
 
-import {
-  getRawAuthFromContext,
-  isAuthConfigured,
-  getSessionWithRefreshToken,
-  refreshSession,
-  decodeState,
-} from './auth-helpers';
+import { getRawAuthFromContext, isAuthConfigured, getSessionWithRefreshToken, refreshSession } from './auth-helpers';
 
 describe('Auth Helpers', () => {
   beforeEach(() => {
@@ -210,57 +204,6 @@ describe('Auth Helpers', () => {
       await refreshSession();
 
       expect(mockAuthkit.saveSession).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('decodeState', () => {
-    it('returns default when state is null', () => {
-      expect(decodeState(null)).toEqual({ returnPathname: '/' });
-    });
-
-    it('returns default when state is "null" string', () => {
-      expect(decodeState('null')).toEqual({ returnPathname: '/' });
-    });
-
-    it('decodes valid base64 state', () => {
-      const internal = btoa(JSON.stringify({ returnPathname: '/dashboard' }));
-
-      const result = decodeState(internal);
-
-      expect(result).toEqual({ returnPathname: '/dashboard' });
-    });
-
-    it('extracts custom state after dot separator', () => {
-      const internal = btoa(JSON.stringify({ returnPathname: '/profile' }));
-      const state = `${internal}.custom-user-state`;
-
-      const result = decodeState(state);
-
-      expect(result).toEqual({
-        returnPathname: '/profile',
-        customState: 'custom-user-state',
-      });
-    });
-
-    it('handles multiple dots in custom state', () => {
-      const internal = btoa(JSON.stringify({ returnPathname: '/' }));
-      const state = `${internal}.part1.part2.part3`;
-
-      const result = decodeState(state);
-
-      expect(result).toEqual({
-        returnPathname: '/',
-        customState: 'part1.part2.part3',
-      });
-    });
-
-    it('returns root with custom state when decode fails', () => {
-      const result = decodeState('invalid-base64');
-
-      expect(result).toEqual({
-        returnPathname: '/',
-        customState: 'invalid-base64',
-      });
     });
   });
 });

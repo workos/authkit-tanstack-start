@@ -16,7 +16,7 @@ Consumer code does not need to change.
 ### Required: set the Sign-in endpoint in the WorkOS dashboard
 
 Because the callback now requires a per-flow verifier cookie, any flow that
-reaches the callback URL *without* first going through your sign-in route will
+reaches the callback URL _without_ first going through your sign-in route will
 fail with `PKCECookieMissingError` and return 500.
 
 In the [WorkOS dashboard Redirects page](https://dashboard.workos.com/redirects),

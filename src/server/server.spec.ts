@@ -9,7 +9,10 @@ const mockWithAuth = vi.fn();
 const mockCreateSignIn = vi.fn();
 type ClearPendingVerifierResult = { response?: Response; headers?: { 'Set-Cookie'?: string | string[] } };
 const mockClearPendingVerifier = vi.fn(
-  async (_response: Response, options: { state: string; redirectUri?: string }): Promise<ClearPendingVerifierResult> => {
+  async (
+    _response: Response,
+    options: { state: string; redirectUri?: string },
+  ): Promise<ClearPendingVerifierResult> => {
     const name = getPKCECookieNameForState(options.state);
     return {
       headers: {
@@ -67,9 +70,7 @@ describe('handleCallbackRoute', () => {
 
   describe('missing code', () => {
     it('returns 400 with generic body and state-derived delete-cookie header when state present', async () => {
-      const request = new Request(
-        `http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const response = await handleCallbackRoute()({ request });
 
       expect(response.status).toBe(400);
@@ -80,9 +81,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('calls onError hook when provided', async () => {
-      const request = new Request(
-        `http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const onError = vi.fn().mockReturnValue(new Response('Custom error', { status: 403 }));
 
       const response = await handleCallbackRoute({ onError })({ request });
@@ -239,9 +238,7 @@ describe('handleCallbackRoute', () => {
 
   describe('error path', () => {
     it('returns 500 with generic body on handleCallback failure', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('Invalid code'));
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -258,9 +255,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('calls onError with the underlying error and appends delete-cookie', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       const err = new Error('Auth failed');
       mockHandleCallback.mockRejectedValue(err);
       const onError = vi.fn().mockReturnValue(
@@ -291,9 +286,7 @@ describe('handleCallbackRoute', () => {
       mutatedResponse.headers.append('Set-Cookie', scopedDelete);
       mockClearPendingVerifier.mockResolvedValueOnce({ response: mutatedResponse });
 
-      const request = new Request(
-        `http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const response = await handleCallbackRoute()({ request });
 
       expect(response.status).toBe(400);
@@ -306,9 +299,7 @@ describe('handleCallbackRoute', () => {
       // for the correct per-flow name.
       mockRedirectUriFromContext = 'https://app.example.com/custom/callback';
 
-      const request = new Request(
-        `http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       await handleCallbackRoute()({ request });
 
       expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), {
@@ -320,9 +311,7 @@ describe('handleCallbackRoute', () => {
     it('passes only state when middleware context has no redirectUri override', async () => {
       mockRedirectUriFromContext = undefined;
 
-      const request = new Request(
-        `http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       await handleCallbackRoute()({ request });
 
       expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), { state: SEALED_STATE });
@@ -353,9 +342,7 @@ describe('handleCallbackRoute', () => {
   describe('state-derived delete headers', () => {
     it('emits a delete header whose cookie name matches getPKCECookieNameForState(state) when state is present', async () => {
       const expected = getPKCECookieNameForState(SEALED_STATE);
-      const request = new Request(
-        `https://app.example/callback?code=bad&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`https://app.example/callback?code=bad&state=${encodeURIComponent(SEALED_STATE)}`);
       // Force the error path so errorResponse runs. `code=bad` with the mock
       // rejecting triggers the catch branch.
       mockHandleCallback.mockRejectedValue(new Error('boom'));

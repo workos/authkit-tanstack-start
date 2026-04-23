@@ -9,8 +9,8 @@ const mockWithAuth = vi.fn();
 const mockCreateSignIn = vi.fn();
 type ClearPendingVerifierResult = { response?: Response; headers?: { 'Set-Cookie'?: string | string[] } };
 const mockClearPendingVerifier = vi.fn(
-  async (_response: Response, options?: { state: string; redirectUri?: string }): Promise<ClearPendingVerifierResult> => {
-    const name = options?.state ? getPKCECookieNameForState(options.state) : 'wos-auth-verifier';
+  async (_response: Response, options: { state: string; redirectUri?: string }): Promise<ClearPendingVerifierResult> => {
+    const name = getPKCECookieNameForState(options.state);
     return {
       headers: {
         'Set-Cookie': `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
@@ -133,8 +133,10 @@ describe('handleCallbackRoute', () => {
     });
 
     it('passes code and state to authkit.handleCallback without a cookieValue arg', async () => {
+      const sealedValue = 'sealed-abc-123';
+      const cookieName = getPKCECookieNameForState('s');
       const request = new Request('http://example.com/callback?code=auth_123&state=s', {
-        headers: { cookie: 'wos-auth-verifier=sealed-abc-123' },
+        headers: { cookie: `${cookieName}=${sealedValue}` },
       });
       mockHandleCallback.mockResolvedValue(successResult());
 
@@ -161,7 +163,7 @@ describe('handleCallbackRoute', () => {
       const request = new Request('http://example.com/callback?code=auth_123');
       mockHandleCallback.mockResolvedValue({
         headers: {
-          'Set-Cookie': ['wos-session=abc123', 'wos-auth-verifier=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'],
+          'Set-Cookie': ['wos-session=abc123', `${PKCE_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`],
         },
         returnPathname: '/',
         state: undefined,
@@ -172,7 +174,7 @@ describe('handleCallbackRoute', () => {
 
       const setCookies = response.headers.getSetCookie();
       expect(setCookies.some((c) => c.startsWith('wos-session=abc123'))).toBe(true);
-      expect(setCookies.some((c) => c.startsWith('wos-auth-verifier='))).toBe(true);
+      expect(setCookies.some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
       expect(setCookies).toHaveLength(2);
     });
 

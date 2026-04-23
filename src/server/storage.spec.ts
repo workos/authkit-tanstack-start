@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getPKCECookieNameForState } from '@workos/authkit-session';
+
+const SEALED_STATE_FIXTURE = 'sealed-state-storage-spec';
+const PKCE_COOKIE_NAME = getPKCECookieNameForState(SEALED_STATE_FIXTURE);
 
 // Mock context before importing storage
 const mockSetPendingHeader = vi.fn();
@@ -39,17 +43,17 @@ describe('TanStackStartCookieSessionStorage', () => {
   describe('getCookie', () => {
     it('returns the named cookie value', async () => {
       const request = new Request('http://example.com', {
-        headers: { cookie: 'wos-auth-verifier=sealed-abc' },
+        headers: { cookie: `${PKCE_COOKIE_NAME}=sealed-abc` },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBe('sealed-abc');
     });
 
     it('returns null without cookies', async () => {
       const request = new Request('http://example.com');
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBeNull();
     });
 
@@ -58,44 +62,44 @@ describe('TanStackStartCookieSessionStorage', () => {
         headers: { cookie: 'other=value' },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBeNull();
     });
 
     it('URI-decodes the cookie value', async () => {
       const encoded = encodeURIComponent('value with spaces & symbols');
       const request = new Request('http://example.com', {
-        headers: { cookie: `wos-auth-verifier=${encoded}` },
+        headers: { cookie: `${PKCE_COOKIE_NAME}=${encoded}` },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBe('value with spaces & symbols');
     });
 
     it('returns the named cookie when mixed with others', async () => {
       const request = new Request('http://example.com', {
-        headers: { cookie: 'other=x; wos-auth-verifier=target; another=y' },
+        headers: { cookie: `other=x; ${PKCE_COOKIE_NAME}=target; another=y` },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBe('target');
     });
 
     it('preserves = padding inside a sealed cookie value', async () => {
       const request = new Request('http://example.com', {
-        headers: { cookie: 'wos-auth-verifier=abc==' },
+        headers: { cookie: `${PKCE_COOKIE_NAME}=abc==` },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBe('abc==');
     });
 
     it('returns null on malformed percent-encoding instead of throwing', async () => {
       const request = new Request('http://example.com', {
-        headers: { cookie: 'wos-auth-verifier=%E0%A4%A' },
+        headers: { cookie: `${PKCE_COOKIE_NAME}=%E0%A4%A` },
       });
 
-      const result = await storage.getCookie(request, 'wos-auth-verifier');
+      const result = await storage.getCookie(request, PKCE_COOKIE_NAME);
       expect(result).toBeNull();
     });
   });

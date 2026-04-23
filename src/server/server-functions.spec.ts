@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getPKCECookieNameForState } from '@workos/authkit-session';
 
 // Set up all mocks before any imports that use them
 vi.mock('@tanstack/react-start/server', () => ({
   getRequest: vi.fn(() => new Request('http://test.local')),
 }));
 
+const SEALED_STATE_FIXTURE = 'sealed-blob-abc';
+const PKCE_COOKIE_NAME = getPKCECookieNameForState(SEALED_STATE_FIXTURE);
+
 const authorizationResult = (url: string) => ({
   url,
   headers: {
-    'Set-Cookie': 'wos-auth-verifier=sealed-blob-abc; Path=/; HttpOnly; SameSite=Lax; Max-Age=600; Secure',
+    'Set-Cookie': `${PKCE_COOKIE_NAME}=${SEALED_STATE_FIXTURE}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600; Secure`,
   },
 });
 
@@ -52,16 +56,20 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('@workos/authkit-session', () => ({
-  getConfig: vi.fn((key: string) => {
-    const configs: Record<string, any> = {
-      clientId: 'test_client_id',
-      redirectUri: 'http://test.local/callback',
-      cookieName: 'wos-session',
-    };
-    return configs[key];
-  }),
-}));
+vi.mock('@workos/authkit-session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@workos/authkit-session')>();
+  return {
+    ...actual,
+    getConfig: vi.fn((key: string) => {
+      const configs: Record<string, any> = {
+        clientId: 'test_client_id',
+        redirectUri: 'http://test.local/callback',
+        cookieName: 'wos-session',
+      };
+      return configs[key];
+    }),
+  };
+});
 
 // Mock global context for middleware pattern
 let mockAuthContext: any = null;
@@ -509,13 +517,16 @@ describe('Server Functions', () => {
 
     cases.forEach(({ name, call, mockFn, url }) => {
       describe(name, () => {
-        it('writes Set-Cookie with wos-auth-verifier exactly once', async () => {
+        it('writes Set-Cookie with the derived PKCE cookie name exactly once', async () => {
           mockFn().mockResolvedValue(authorizationResult(url));
 
           await call();
 
           expect(mockSetPendingHeader).toHaveBeenCalledTimes(1);
-          expect(mockSetPendingHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringMatching(/^wos-auth-verifier=/));
+          expect(mockSetPendingHeader).toHaveBeenCalledWith(
+            'Set-Cookie',
+            expect.stringMatching(new RegExp(`^${PKCE_COOKIE_NAME}=`)),
+          );
         });
 
         it('returns only the URL (no sealedState leak)', async () => {

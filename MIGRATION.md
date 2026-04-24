@@ -1,5 +1,7 @@
 # Migration Guide
 
+See [CHANGELOG.md](./CHANGELOG.md) for the full per-release summary.
+
 ## 0.6.0 → 0.7.0
 
 First release with PKCE state binding via `@workos/authkit-session@0.5.1`. The

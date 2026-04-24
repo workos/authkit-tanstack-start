@@ -1,16 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getPKCECookieNameForState } from '@workos/authkit-session';
+
+const SEALED_STATE = 'sealed-state-fixture';
+const PKCE_COOKIE_NAME = getPKCECookieNameForState(SEALED_STATE);
 
 const mockHandleCallback = vi.fn();
 const mockWithAuth = vi.fn();
 const mockCreateSignIn = vi.fn();
 type ClearPendingVerifierResult = { response?: Response; headers?: { 'Set-Cookie'?: string | string[] } };
 const mockClearPendingVerifier = vi.fn(
-  async (): Promise<ClearPendingVerifierResult> => ({
-    headers: {
-      'Set-Cookie':
-        'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-    },
-  }),
+  async (
+    _response: Response,
+    options: { state: string; redirectUri?: string },
+  ): Promise<ClearPendingVerifierResult> => {
+    const name = getPKCECookieNameForState(options.state);
+    return {
+      headers: {
+        'Set-Cookie': `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+      },
+    };
+  },
 );
 
 let mockGetAuthkitImpl: () => Promise<any>;
@@ -60,19 +69,19 @@ describe('handleCallbackRoute', () => {
   });
 
   describe('missing code', () => {
-    it('returns 400 with generic body and delete-cookie header', async () => {
-      const request = new Request('http://example.com/callback');
+    it('returns 400 with generic body and state-derived delete-cookie header when state present', async () => {
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const response = await handleCallbackRoute()({ request });
 
       expect(response.status).toBe(400);
       const body = await response.json();
       expect(body.error.message).toBe('Authentication failed');
       expect(body.error).not.toHaveProperty('details');
-      expect(response.headers.getSetCookie()).toEqual([expect.stringContaining('wos-auth-verifier=')]);
+      expect(response.headers.getSetCookie()).toEqual([expect.stringContaining(`${PKCE_COOKIE_NAME}=`)]);
     });
 
     it('calls onError hook when provided', async () => {
-      const request = new Request('http://example.com/callback');
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const onError = vi.fn().mockReturnValue(new Response('Custom error', { status: 403 }));
 
       const response = await handleCallbackRoute({ onError })({ request });
@@ -80,7 +89,7 @@ describe('handleCallbackRoute', () => {
       expect(onError).toHaveBeenCalledWith({ error: expect.any(Error), request });
       expect(response.status).toBe(403);
       expect(await response.text()).toBe('Custom error');
-      expect(response.headers.getSetCookie().some((c) => c.startsWith('wos-auth-verifier='))).toBe(true);
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
     });
   });
 
@@ -123,8 +132,10 @@ describe('handleCallbackRoute', () => {
     });
 
     it('passes code and state to authkit.handleCallback without a cookieValue arg', async () => {
+      const sealedValue = 'sealed-abc-123';
+      const cookieName = getPKCECookieNameForState('s');
       const request = new Request('http://example.com/callback?code=auth_123&state=s', {
-        headers: { cookie: 'wos-auth-verifier=sealed-abc-123' },
+        headers: { cookie: `${cookieName}=${sealedValue}` },
       });
       mockHandleCallback.mockResolvedValue(successResult());
 
@@ -151,7 +162,7 @@ describe('handleCallbackRoute', () => {
       const request = new Request('http://example.com/callback?code=auth_123');
       mockHandleCallback.mockResolvedValue({
         headers: {
-          'Set-Cookie': ['wos-session=abc123', 'wos-auth-verifier=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'],
+          'Set-Cookie': ['wos-session=abc123', `${PKCE_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`],
         },
         returnPathname: '/',
         state: undefined,
@@ -162,7 +173,7 @@ describe('handleCallbackRoute', () => {
 
       const setCookies = response.headers.getSetCookie();
       expect(setCookies.some((c) => c.startsWith('wos-session=abc123'))).toBe(true);
-      expect(setCookies.some((c) => c.startsWith('wos-auth-verifier='))).toBe(true);
+      expect(setCookies.some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
       expect(setCookies).toHaveLength(2);
     });
 
@@ -227,7 +238,7 @@ describe('handleCallbackRoute', () => {
 
   describe('error path', () => {
     it('returns 500 with generic body on handleCallback failure', async () => {
-      const request = new Request('http://example.com/callback?code=invalid');
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('Invalid code'));
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -238,13 +249,13 @@ describe('handleCallbackRoute', () => {
       expect(body.error.message).toBe('Authentication failed');
       expect(body.error.description).toContain("Couldn't sign in");
       expect(body.error).not.toHaveProperty('details');
-      expect(response.headers.getSetCookie().some((c) => c.startsWith('wos-auth-verifier='))).toBe(true);
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
 
       consoleSpy.mockRestore();
     });
 
     it('calls onError with the underlying error and appends delete-cookie', async () => {
-      const request = new Request('http://example.com/callback?code=invalid');
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       const err = new Error('Auth failed');
       mockHandleCallback.mockRejectedValue(err);
       const onError = vi.fn().mockReturnValue(
@@ -261,7 +272,7 @@ describe('handleCallbackRoute', () => {
       expect(response.status).toBe(418);
       expect(response.headers.get('X-Custom')).toBe('preserved');
       expect(await response.text()).toBe('Custom error page');
-      expect(response.headers.getSetCookie().some((c) => c.startsWith('wos-auth-verifier='))).toBe(true);
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
 
       consoleSpy.mockRestore();
     });
@@ -269,50 +280,47 @@ describe('handleCallbackRoute', () => {
     it('reads verifier-delete header from clearPendingVerifier response when headers bag is empty', async () => {
       // The real adapter's storage override returns `{ response }` with the
       // Set-Cookie attached to the response, never populating the headers
-      // bag. The static fallback would lose per-request `redirectUri`-scoped
-      // Path. Simulate that shape and assert the delete rides through.
-      const scopedDelete =
-        'wos-auth-verifier=; Path=/custom/callback; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      // bag. Simulate that shape and assert the delete rides through.
+      const scopedDelete = `${PKCE_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       const mutatedResponse = new Response();
       mutatedResponse.headers.append('Set-Cookie', scopedDelete);
       mockClearPendingVerifier.mockResolvedValueOnce({ response: mutatedResponse });
 
-      const request = new Request('http://example.com/callback');
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       const response = await handleCallbackRoute()({ request });
 
       expect(response.status).toBe(400);
       expect(response.headers.getSetCookie()).toEqual([scopedDelete]);
     });
 
-    it('forwards middleware-scoped redirectUri to clearPendingVerifier so Path matches the set cookie', async () => {
-      // The test above asserts the *extracted* header propagates, but not
-      // that the adapter computed the correct Path. This one proves we pass
-      // the per-request `redirectUri` from middleware context into upstream
-      // so the delete cookie's Path matches what `createSignIn` originally
-      // set. Without this, a failed callback after
-      // `authkitMiddleware({ redirectUri })` would emit a `Path=/` delete
-      // that doesn't match the scoped cookie the browser actually holds.
+    it('forwards middleware-scoped redirectUri and state to clearPendingVerifier', async () => {
+      // Proves we pass the per-request `redirectUri` from middleware context
+      // and the OAuth `state` into upstream so the delete cookie is computed
+      // for the correct per-flow name.
       mockRedirectUriFromContext = 'https://app.example.com/custom/callback';
 
-      const request = new Request('http://example.com/callback');
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       await handleCallbackRoute()({ request });
 
       expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), {
+        state: SEALED_STATE,
         redirectUri: 'https://app.example.com/custom/callback',
       });
     });
 
-    it('passes no options when middleware context has no redirectUri override', async () => {
+    it('passes only state when middleware context has no redirectUri override', async () => {
       mockRedirectUriFromContext = undefined;
 
-      const request = new Request('http://example.com/callback');
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
       await handleCallbackRoute()({ request });
 
-      expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), undefined);
+      expect(mockClearPendingVerifier).toHaveBeenCalledWith(expect.any(Response), { state: SEALED_STATE });
     });
 
-    it('emits static fallback delete-cookies when getAuthkit() rejects', async () => {
-      const request = new Request('http://example.com/callback?code=auth_123');
+    it('emits state-derived delete-cookies when getAuthkit() rejects and state is present', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
       mockGetAuthkitImpl = () => Promise.reject(new Error('Config missing'));
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -321,12 +329,37 @@ describe('handleCallbackRoute', () => {
       expect(response.status).toBe(500);
       const setCookies = response.headers.getSetCookie();
       expect(setCookies).toHaveLength(2);
+      expect(setCookies.every((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
       expect(setCookies[0]).toContain('SameSite=Lax');
       expect(setCookies[1]).toContain('SameSite=None');
       expect(setCookies[1]).toContain('Secure');
       expect(setCookies.every((c) => c.includes('Max-Age=0'))).toBe(true);
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('state-derived delete headers', () => {
+    it('emits a delete header whose cookie name matches getPKCECookieNameForState(state) when state is present', async () => {
+      const expected = getPKCECookieNameForState(SEALED_STATE);
+      const request = new Request(`https://app.example/callback?code=bad&state=${encodeURIComponent(SEALED_STATE)}`);
+      // Force the error path so errorResponse runs. `code=bad` with the mock
+      // rejecting triggers the catch branch.
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const res = await handleCallbackRoute()({ request });
+      const setCookies = res.headers.getSetCookie();
+      expect(setCookies.some((c) => c.startsWith(`${expected}=`))).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('emits no Set-Cookie delete when state is absent', async () => {
+      const request = new Request('https://app.example/callback'); // no code, no state
+      const res = await handleCallbackRoute()({ request });
+      const setCookies = res.headers.getSetCookie();
+      expect(setCookies.some((c) => c.includes('wos-auth-verifier'))).toBe(false);
     });
   });
 });

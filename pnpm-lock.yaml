@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@workos/authkit-session':
-        specifier: 0.4.0
-        version: 0.4.0(typescript@5.9.3)
+        specifier: ^0.5.1
+        version: 0.5.1(typescript@5.9.3)
     devDependencies:
       '@tanstack/react-router':
         specifier: ^1.154.8
@@ -2030,8 +2030,8 @@ packages:
     resolution: {integrity: sha512-NgQKHpwh8AbT4KvAsW91Y+4f4jja2IvFPQ5atcy5NUxUMVRgXzRFEee3erawfXrTmiCVqJjd9PljHySKBXmHKQ==}
     engines: {node: '>=20.15.0'}
 
-  '@workos/authkit-session@0.4.0':
-    resolution: {integrity: sha512-s6wwsUZFlY4cvudouKAD7oRQSYAaeBblCafDu1HZhxsnhCQ/ddSsr4OjrTurmckGC6Xsph7Mm7uEe+++QOaTvQ==}
+  '@workos/authkit-session@0.5.1':
+    resolution: {integrity: sha512-4nyHhxEfztJmmruMhefmxu/b2ElzswjlUZH/fub1GFXtLN1RNmT552L/VbV0by5ailiJYJ3gk7LJQ61obKHZLw==}
     engines: {node: '>=20.0.0'}
 
   acorn@8.15.0:
@@ -4774,7 +4774,7 @@ snapshots:
     dependencies:
       eventemitter3: 5.0.4
 
-  '@workos/authkit-session@0.4.0(typescript@5.9.3)':
+  '@workos/authkit-session@0.5.1(typescript@5.9.3)':
     dependencies:
       '@workos-inc/node': 8.13.0
       iron-webcrypto: 2.0.0

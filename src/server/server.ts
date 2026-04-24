@@ -1,13 +1,22 @@
-import type { HeadersBag } from '@workos/authkit-session';
+import { getPKCECookieNameForState, type HeadersBag } from '@workos/authkit-session';
 import { getAuthkit } from './authkit-loader.js';
 import { getRedirectUriFromContext } from './auth-helpers.js';
 import { emitHeadersFrom } from './headers-bag.js';
 import type { HandleCallbackOptions } from './types.js';
 
-const STATIC_FALLBACK_DELETE_HEADERS: readonly string[] = [
-  'wos-auth-verifier=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-  'wos-auth-verifier=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-];
+/**
+ * Build Set-Cookie headers that delete the per-flow PKCE verifier
+ * cookie identified by `state`. When `state` is absent (malformed
+ * callback), return an empty list — the 10-minute TTL handles orphans.
+ */
+function deleteHeadersForState(state: string | null): readonly string[] {
+  if (!state) return [];
+  const name = getPKCECookieNameForState(state);
+  return [
+    `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+    `${name}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+  ];
+}
 
 /**
  * Creates a callback route handler for OAuth authentication.
@@ -56,35 +65,38 @@ export function handleCallbackRoute(options: HandleCallbackOptions = {}) {
 }
 
 /**
- * Extract the `Set-Cookie` header(s) produced by `authkit.clearPendingVerifier()`
- * so we can attach them to whatever response we emit on an error path.
+ * Extract the `Set-Cookie` header(s) produced by
+ * `authkit.clearPendingVerifier()` for the flow identified by `state`.
  *
- * Two things matter here:
- *   1. The delete cookie's `Path` must match whatever `redirectUri` was used
- *      to set it. `authkitMiddleware({ redirectUri })` scopes the verifier
- *      cookie to that URI's path — we pass the same override to
- *      `clearPendingVerifier` so the delete targets the same `Path`.
- *   2. This adapter's storage overrides `applyHeaders`, so `clearCookie`
- *      returns `{ response }` with the `Set-Cookie` attached to the
- *      response — the `headers` bag is empty in that path. Prefer reading
- *      from the response, fall back to the headers bag, then to the static
- *      delete as a last resort.
+ * Delete matching is on (name, domain, path); `path` is always `/`
+ * for PKCE cookies in authkit-session (see `getPKCECookieOptions`).
+ * When authkit setup itself failed or `clearPendingVerifier` throws,
+ * fall back to a state-derived header pair that covers both
+ * SameSite=Lax and SameSite=None set paths — browsers use
+ * (name, domain, path) for cookie replacement, not SameSite, so
+ * either variant deletes the original regardless of its original
+ * SameSite attribute.
  */
-async function buildVerifierDeleteHeaders(authkit: Awaited<ReturnType<typeof getAuthkit>>): Promise<readonly string[]> {
+async function buildVerifierDeleteHeaders(
+  authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined,
+  state: string | null,
+): Promise<readonly string[]> {
+  if (!state) return [];
+  if (!authkit) return deleteHeadersForState(state);
   try {
     const redirectUri = getRedirectUriFromContext();
-    const { response, headers } = await authkit.clearPendingVerifier(
-      new Response(),
-      redirectUri ? { redirectUri } : undefined,
-    );
+    const { response, headers } = await authkit.clearPendingVerifier(new Response(), {
+      state,
+      ...(redirectUri ? { redirectUri } : {}),
+    });
     const fromResponse = response?.headers.getSetCookie?.() ?? [];
     if (fromResponse.length > 0) return fromResponse;
     const fromBag = headers?.['Set-Cookie'];
     if (fromBag) return Array.isArray(fromBag) ? fromBag : [fromBag];
-    return STATIC_FALLBACK_DELETE_HEADERS;
+    return deleteHeadersForState(state);
   } catch (error) {
     console.error('[authkit-tanstack-react-start] clearPendingVerifier failed:', error);
-    return STATIC_FALLBACK_DELETE_HEADERS;
+    return deleteHeadersForState(state);
   }
 }
 
@@ -102,10 +114,10 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
   const state = url.searchParams.get('state');
 
   if (!code) {
-    return errorResponse(new Error('Missing authorization code'), request, options, authkit, 400);
+    return errorResponse(new Error('Missing authorization code'), request, options, authkit, state, 400);
   }
   if (!authkit) {
-    return errorResponse(new Error('AuthKit not initialized'), request, options, authkit, 500);
+    return errorResponse(new Error('AuthKit not initialized'), request, options, authkit, state, 500);
   }
 
   try {
@@ -137,7 +149,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
     return new Response(null, { status: 307, headers });
   } catch (error) {
     console.error('OAuth callback failed:', error);
-    return errorResponse(error, request, options, authkit, 500);
+    return errorResponse(error, request, options, authkit, state, 500);
   }
 }
 
@@ -146,11 +158,12 @@ async function errorResponse(
   request: Request,
   options: HandleCallbackOptions,
   authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined,
+  state: string | null,
   defaultStatus: number,
 ): Promise<Response> {
   // Only the error path needs delete-cookie headers, so skip the
   // clearPendingVerifier round-trip on the happy path.
-  const deleteCookieHeaders = authkit ? await buildVerifierDeleteHeaders(authkit) : STATIC_FALLBACK_DELETE_HEADERS;
+  const deleteCookieHeaders = await buildVerifierDeleteHeaders(authkit, state);
 
   if (options.onError) {
     const userResponse = await options.onError({ error, request });

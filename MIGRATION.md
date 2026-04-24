@@ -2,7 +2,7 @@
 
 ## 0.6.0 → 0.7.0
 
-First release with PKCE state binding via `@workos/authkit-session@0.5.0`. The
+First release with PKCE state binding via `@workos/authkit-session@0.5.1`. The
 callback now requires a short-lived verifier cookie that is set during sign-in
 initiation. No public API changed — but the **Sign-in endpoint** in the WorkOS
 dashboard becomes load-bearing.
@@ -76,7 +76,7 @@ sets no verifier cookie at all, so there is nothing to fall back to.
 
 ### Dependency change
 
-`@workos/authkit-session` bumps from `0.3.4` to `0.5.0`. The interim `0.4.0`
+`@workos/authkit-session` bumps from `0.3.4` to `0.5.1`. The interim `0.4.0`
 was never shipped in this adapter. The upstream migration guide covers the
 underlying API and cookie-naming changes:
 <https://github.com/workos/authkit-session/blob/main/MIGRATION.md>.

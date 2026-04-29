@@ -411,26 +411,38 @@ export const Route = createFileRoute('/api/auth/callback')({
 });
 ```
 
-**With hooks for custom logic:**
+**With a sign-in error page (browser-friendly default):**
 
 ```typescript
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
     handlers: {
       GET: handleCallbackRoute({
+        errorRedirectUrl: '/sign-in?error=auth_failed',
+      }),
+    },
+  },
+});
+```
+
+The user lands on `/sign-in?error=auth_failed` (a route you own) instead of seeing raw JSON. Verifier-delete cookies are still attached.
+
+**With Sentry capture:**
+
+```typescript
+import * as Sentry from '@sentry/node';
+
+export const Route = createFileRoute('/api/auth/callback')({
+  server: {
+    handlers: {
+      GET: handleCallbackRoute({
         onSuccess: async ({ user, authenticationMethod }) => {
-          // Create user record in your database
           await db.users.upsert({ id: user.id, email: user.email });
-          // Track analytics
           analytics.track('User Signed In', { method: authenticationMethod });
         },
         onError: ({ error, request }) => {
-          // Custom error handling
-          console.error('Auth failed:', error);
-          return new Response(JSON.stringify({ error: 'Authentication failed' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          Sentry.captureException(error, { extra: { url: request.url } });
+          return Response.redirect(new URL('/sign-in?error=auth_failed', request.url));
         },
       }),
     },
@@ -438,11 +450,14 @@ export const Route = createFileRoute('/api/auth/callback')({
 });
 ```
 
+`onError` runs for every callback failure (missing `code`, state mismatch, token exchange failure, `onSuccess` throws). The SDK already emits a `console.error` for every failure, so if you wire Sentry's `console.error` ingestion you don't need to call `Sentry.captureException` yourself.
+
 **Options:**
 
-- `onSuccess?: (data) => Promise<void>` - Called after successful authentication with user data, tokens, and authentication method
-- `onError?: ({ error, request }) => Response` - Custom error handler that returns a Response
-- `returnPathname?: string` - Override the redirect path after authentication (defaults to state or `/`)
+- `onSuccess?: (data) => Promise<void>` — Called after successful authentication with user data, tokens, and authentication method.
+- `onError?: ({ error, request }) => Response` — Custom error handler that returns a Response. Errors thrown from inside `onError` are NOT caught by the SDK.
+- `errorRedirectUrl?: string` — URL (absolute or relative) to redirect to on callback failure when `onError` is not set. If both are set, `onError` wins. Set this at route-construction time only — do not derive from request input (it would be an open-redirect vector).
+- `returnPathname?: string` — Override the success-path redirect after authentication. Does not apply to errors.
 
 ### Client Hooks
 

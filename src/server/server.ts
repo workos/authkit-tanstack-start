@@ -105,8 +105,8 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
 
   try {
     authkit = await getAuthkit();
-  } catch (setupError) {
-    console.error('[authkit-tanstack-react-start] Callback setup failed:', setupError);
+  } catch {
+    // Swallowed: errorResponse below logs centrally when authkit is missing.
   }
 
   const url = new URL(request.url);
@@ -148,7 +148,6 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
 
     return new Response(null, { status: 307, headers });
   } catch (error) {
-    console.error('OAuth callback failed:', error);
     return errorResponse(error, request, options, authkit, state, 500);
   }
 }
@@ -161,6 +160,8 @@ async function errorResponse(
   state: string | null,
   defaultStatus: number,
 ): Promise<Response> {
+  console.error('[authkit-tanstack-react-start] OAuth callback failed:', error);
+
   // Only the error path needs delete-cookie headers, so skip the
   // clearPendingVerifier round-trip on the happy path.
   const deleteCookieHeaders = await buildVerifierDeleteHeaders(authkit, state);
@@ -174,6 +175,21 @@ async function errorResponse(
       statusText: userResponse.statusText,
       headers,
     });
+  }
+
+  if (options.errorRedirectUrl) {
+    try {
+      const target = new URL(options.errorRedirectUrl, request.url);
+      const headers = new Headers({ Location: target.toString() });
+      for (const h of deleteCookieHeaders) headers.append('Set-Cookie', h);
+      return new Response(null, { status: 302, headers });
+    } catch (urlError) {
+      console.error(
+        '[authkit-tanstack-react-start] errorRedirectUrl is malformed; falling back to JSON 500:',
+        urlError,
+      );
+      // fall through to JSON
+    }
   }
 
   const headers = new Headers({ 'Content-Type': 'application/json' });

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPKCECookieNameForState } from '@workos/authkit-session';
+import type { HandleCallbackOptions } from './types';
 
 const SEALED_STATE = 'sealed-state-fixture';
 const PKCE_COOKIE_NAME = getPKCECookieNameForState(SEALED_STATE);
@@ -56,6 +57,8 @@ const successResult = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('handleCallbackRoute', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockRedirectUriFromContext = undefined;
@@ -66,6 +69,11 @@ describe('handleCallbackRoute', () => {
         createSignIn: mockCreateSignIn,
         clearPendingVerifier: mockClearPendingVerifier,
       });
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('missing code', () => {
@@ -240,7 +248,6 @@ describe('handleCallbackRoute', () => {
     it('returns 500 with generic body on handleCallback failure', async () => {
       const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('Invalid code'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const response = await handleCallbackRoute()({ request });
 
@@ -250,8 +257,6 @@ describe('handleCallbackRoute', () => {
       expect(body.error.description).toContain("Couldn't sign in");
       expect(body.error).not.toHaveProperty('details');
       expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
-
-      consoleSpy.mockRestore();
     });
 
     it('calls onError with the underlying error and appends delete-cookie', async () => {
@@ -264,7 +269,6 @@ describe('handleCallbackRoute', () => {
           headers: { 'X-Custom': 'preserved' },
         }),
       );
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const response = await handleCallbackRoute({ onError })({ request });
 
@@ -273,8 +277,6 @@ describe('handleCallbackRoute', () => {
       expect(response.headers.get('X-Custom')).toBe('preserved');
       expect(await response.text()).toBe('Custom error page');
       expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
-
-      consoleSpy.mockRestore();
     });
 
     it('reads verifier-delete header from clearPendingVerifier response when headers bag is empty', async () => {
@@ -322,7 +324,6 @@ describe('handleCallbackRoute', () => {
         `http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`,
       );
       mockGetAuthkitImpl = () => Promise.reject(new Error('Config missing'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const response = await handleCallbackRoute()({ request });
 
@@ -334,8 +335,173 @@ describe('handleCallbackRoute', () => {
       expect(setCookies[1]).toContain('SameSite=None');
       expect(setCookies[1]).toContain('Secure');
       expect(setCookies.every((c) => c.includes('Max-Age=0'))).toBe(true);
+    });
 
-      consoleSpy.mockRestore();
+    it.each<{ label: string; arrange: () => Request; options?: HandleCallbackOptions }>([
+      {
+        label: 'missing code',
+        arrange: () => new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`),
+      },
+      {
+        label: 'getAuthkit throws',
+        arrange: () => {
+          mockGetAuthkitImpl = () => Promise.reject(new Error('Config missing'));
+          return new Request(`http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`);
+        },
+      },
+      {
+        label: 'handleCallback throws',
+        arrange: () => {
+          mockHandleCallback.mockRejectedValue(new Error('Token exchange failure'));
+          return new Request(`http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`);
+        },
+      },
+      {
+        label: 'onSuccess throws',
+        arrange: () => {
+          mockHandleCallback.mockResolvedValue(successResult());
+          return new Request(`http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`);
+        },
+        options: {
+          onSuccess: () => {
+            throw new Error('db failure');
+          },
+        },
+      },
+    ])('central console.error fires exactly once on $label', async ({ arrange, options }) => {
+      const request = arrange();
+      await handleCallbackRoute(options ?? {})({ request });
+
+      const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+      );
+      expect(callbackErrorLogs).toHaveLength(1);
+    });
+
+    it('routes onSuccess throws through errorResponse with delete-cookies', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockResolvedValue(successResult());
+      const onSuccess = vi.fn(() => {
+        throw new Error('db failure');
+      });
+
+      const response = await handleCallbackRoute({ onSuccess })({ request });
+
+      expect(response.status).toBe(500);
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
+    });
+
+    it('does not catch errors thrown inside onError', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('callback failure'));
+      const onError = vi.fn(() => {
+        throw new Error('user-side failure');
+      });
+
+      await expect(
+        handleCallbackRoute({ onError, errorRedirectUrl: '/fallback' })({ request }),
+      ).rejects.toThrow('user-side failure');
+    });
+  });
+
+  describe('errorRedirectUrl path', () => {
+    it('returns 302 to absolute errorRedirectUrl with delete-cookies', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+
+      const response = await handleCallbackRoute({ errorRedirectUrl: 'https://example.com/sign-in?error=auth' })({
+        request,
+      });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toBe('https://example.com/sign-in?error=auth');
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
+    });
+
+    it('resolves relative errorRedirectUrl against request origin', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+
+      const response = await handleCallbackRoute({ errorRedirectUrl: '/sign-in?error=auth_failed' })({ request });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toBe('http://example.com/sign-in?error=auth_failed');
+    });
+
+    it('runs onError and ignores errorRedirectUrl when both are set', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+      const onError = vi.fn(() => new Response('custom', { status: 418 }));
+
+      const response = await handleCallbackRoute({ onError, errorRedirectUrl: '/should-not-be-used' })({ request });
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(418);
+      expect(response.headers.get('Location')).toBeNull();
+
+      const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+      );
+      expect(callbackErrorLogs).toHaveLength(1);
+    });
+
+    it('falls back to JSON when errorRedirectUrl is malformed', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+
+      const response = await handleCallbackRoute({ errorRedirectUrl: 'http://[::1' })({ request });
+
+      expect(response.status).toBe(500);
+      expect(response.headers.get('Content-Type')).toBe('application/json');
+      const body = await response.json();
+      expect(body.error.message).toBe('Authentication failed');
+      expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
+
+      const callbackLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+      );
+      const malformedLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
+      );
+      expect(callbackLogs).toHaveLength(1);
+      expect(malformedLogs).toHaveLength(1);
+    });
+
+    it('falls back to JSON 400 when errorRedirectUrl is malformed on missing-code path', async () => {
+      const request = new Request(`http://example.com/callback?state=${encodeURIComponent(SEALED_STATE)}`);
+
+      const response = await handleCallbackRoute({ errorRedirectUrl: 'http://[::1' })({ request });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get('Content-Type')).toBe('application/json');
+    });
+
+    it('ignores returnPathname on the error path', async () => {
+      const request = new Request(
+        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+      mockHandleCallback.mockRejectedValue(new Error('boom'));
+
+      const response = await handleCallbackRoute({
+        returnPathname: '/dashboard',
+        errorRedirectUrl: '/sign-in?error=auth',
+      })({ request });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toContain('/sign-in?error=auth');
+      expect(response.headers.get('Location')).not.toContain('/dashboard');
     });
   });
 
@@ -346,13 +512,10 @@ describe('handleCallbackRoute', () => {
       // Force the error path so errorResponse runs. `code=bad` with the mock
       // rejecting triggers the catch branch.
       mockHandleCallback.mockRejectedValue(new Error('boom'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const res = await handleCallbackRoute()({ request });
       const setCookies = res.headers.getSetCookie();
       expect(setCookies.some((c) => c.startsWith(`${expected}=`))).toBe(true);
-
-      consoleSpy.mockRestore();
     });
 
     it('emits no Set-Cookie delete when state is absent', async () => {

@@ -74,9 +74,7 @@ function getAuthFromContext(): UserInfo | NoUserInfo {
  * confined to server-only modules (which the lazy-import boundary already
  * isolates from the client).
  */
-export type SignOutPlan =
-  | { kind: 'returnTo'; to: string }
-  | { kind: 'logoutUrl'; href: string; headers: Headers };
+export type SignOutPlan = { kind: 'returnTo'; to: string } | { kind: 'logoutUrl'; href: string; headers: Headers };
 
 export async function getSignOutUrlBody(data?: { returnTo?: string }): Promise<{ url: string | null }> {
   const auth = getAuthFromContext();
@@ -119,32 +117,29 @@ export function getAuthBody(): UserInfo | NoUserInfo {
 
 export async function getAuthorizationUrlBody(options?: GetAuthURLOptions): Promise<string> {
   const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(await authkit.createAuthorization(undefined, applyContextRedirectUri(options ?? {})));
+  return forwardAuthorizationCookies(
+    await authkit.createAuthorization(undefined, applyContextRedirectUri(options ?? {})),
+  );
 }
 
-export async function getSignInUrlBody(
-  data?: string | Omit<GetAuthURLOptions, 'screenHint'>,
-): Promise<string> {
+export async function getSignInUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
   return forwardAuthorizationCookies(await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
 }
 
-export async function getSignUpUrlBody(
-  data?: string | Omit<GetAuthURLOptions, 'screenHint'>,
-): Promise<string> {
+export async function getSignUpUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
   return forwardAuthorizationCookies(await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
 }
 
-export type SwitchToOrganizationPlan =
-  | { kind: 'redirect'; to: string }
-  | { kind: 'user'; user: UserInfo };
+export type SwitchToOrganizationPlan = { kind: 'redirect'; to: string } | { kind: 'user'; user: UserInfo };
 
-export async function switchToOrganizationBody(
-  data: { organizationId: string; returnTo?: string },
-): Promise<SwitchToOrganizationPlan> {
+export async function switchToOrganizationBody(data: {
+  organizationId: string;
+  returnTo?: string;
+}): Promise<SwitchToOrganizationPlan> {
   const auth = getAuthFromContext();
 
   if (!auth.user) {

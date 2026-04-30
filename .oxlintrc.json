@@ -13,7 +13,14 @@
           {
             "patterns": [
               {
-                "group": ["./auth-helpers*", "./authkit-loader*", "./context*", "./headers-bag*", "./action-bodies*", "./server-fn-bodies*"],
+                "group": [
+                  "./auth-helpers*",
+                  "./authkit-loader*",
+                  "./context*",
+                  "./headers-bag*",
+                  "./action-bodies*",
+                  "./server-fn-bodies*"
+                ],
                 "allowTypeImports": true,
                 "message": "Static value imports of server-only modules are forbidden in this file. Move logic into action-bodies.ts or server-fn-bodies.ts and use a dynamic import inside the handler. See CLAUDE.md."
               },

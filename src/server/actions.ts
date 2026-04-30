@@ -36,12 +36,10 @@ export const refreshAuthAction = createServerFn({ method: 'POST' })
 /**
  * Get access token for the current session.
  */
-export const getAccessTokenAction = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<string | undefined> => {
-    const { getAccessTokenBody } = await import('./action-bodies.js');
-    return getAccessTokenBody();
-  },
-);
+export const getAccessTokenAction = createServerFn({ method: 'GET' }).handler(async (): Promise<string | undefined> => {
+  const { getAccessTokenBody } = await import('./action-bodies.js');
+  return getAccessTokenBody();
+});
 
 /**
  * Refresh and get a new access token.

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { checkSessionAction, getAuthAction, refreshAuthAction, switchToOrganizationAction } from '../server/actions.js';
-import { ClientUserInfo, NoUserInfo, getSignOutUrl } from '../server/server-functions.js';
+import { getSignOutUrl } from '../server/server-functions.js';
+import type { ClientUserInfo, NoUserInfo } from '../server/server-functions.js';
 import type { AuthContextType, AuthKitProviderProps } from './types.js';
 import type { User, Impersonator } from '../types.js';
 

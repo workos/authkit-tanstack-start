@@ -3,5 +3,29 @@
   "plugins": null,
   "categories": {},
   "rules": {},
-  "ignorePatterns": ["dist/", "example/src/routeTree.gen.ts"]
+  "ignorePatterns": ["dist/", "example/src/routeTree.gen.ts"],
+  "overrides": [
+    {
+      "files": ["src/server/actions.ts", "src/server/server-functions.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["./auth-helpers*", "./authkit-loader*", "./context*", "./headers-bag*", "./action-bodies*", "./server-fn-bodies*"],
+                "allowTypeImports": true,
+                "message": "Static value imports of server-only modules are forbidden in this file. Move logic into action-bodies.ts or server-fn-bodies.ts and use a dynamic import inside the handler. See CLAUDE.md."
+              },
+              {
+                "group": ["@workos/authkit-session", "@workos-inc/node"],
+                "allowTypeImports": true,
+                "message": "Static value imports of these packages are forbidden in this file. Use a dynamic import inside the handler body."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

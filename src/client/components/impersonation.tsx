@@ -1,7 +1,8 @@
 import { useEffect, useState, type ComponentPropsWithoutRef } from 'react';
 import { Button } from './button.js';
 import { MinMaxButton } from './min-max-button.js';
-import { getOrganizationAction, type OrganizationInfo } from '../../server/actions.js';
+import { getOrganizationAction } from '../../server/actions.js';
+import type { OrganizationInfo } from '../../server/actions.js';
 import { useAuth } from '../AuthKitProvider.js';
 
 interface ImpersonationProps extends ComponentPropsWithoutRef<'div'> {

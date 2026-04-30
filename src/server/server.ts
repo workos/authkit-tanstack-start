@@ -103,10 +103,11 @@ async function buildVerifierDeleteHeaders(
 async function handleCallbackInternal(request: Request, options: HandleCallbackOptions): Promise<Response> {
   let authkit: Awaited<ReturnType<typeof getAuthkit>> | undefined;
 
+  let setupError: unknown;
   try {
     authkit = await getAuthkit();
-  } catch {
-    // Swallowed: errorResponse below logs centrally when authkit is missing.
+  } catch (error) {
+    setupError = error;
   }
 
   const url = new URL(request.url);
@@ -117,7 +118,7 @@ async function handleCallbackInternal(request: Request, options: HandleCallbackO
     return errorResponse(new Error('Missing authorization code'), request, options, authkit, state, 400);
   }
   if (!authkit) {
-    return errorResponse(new Error('AuthKit not initialized'), request, options, authkit, state, 500);
+    return errorResponse(setupError ?? new Error('AuthKit not initialized'), request, options, authkit, state, 500);
   }
 
   try {
@@ -185,7 +186,7 @@ async function errorResponse(
       return new Response(null, { status: 302, headers });
     } catch (urlError) {
       console.error(
-        '[authkit-tanstack-react-start] errorRedirectUrl is malformed; falling back to JSON 500:',
+        `[authkit-tanstack-react-start] errorRedirectUrl is malformed; falling back to JSON ${defaultStatus}:`,
         urlError,
       );
       // fall through to JSON

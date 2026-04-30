@@ -337,6 +337,22 @@ describe('handleCallbackRoute', () => {
       expect(setCookies.every((c) => c.includes('Max-Age=0'))).toBe(true);
     });
 
+    it('logs the original setup error when getAuthkit() rejects', async () => {
+      const originalError = new Error('Config missing');
+      mockGetAuthkitImpl = () => Promise.reject(originalError);
+      const request = new Request(
+        `http://example.com/callback?code=auth_123&state=${encodeURIComponent(SEALED_STATE)}`,
+      );
+
+      await handleCallbackRoute()({ request });
+
+      const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+      );
+      expect(callbackErrorLogs).toHaveLength(1);
+      expect(callbackErrorLogs[0]![1]).toBe(originalError);
+    });
+
     it.each<{ label: string; arrange: () => Request; options?: HandleCallbackOptions }>([
       {
         label: 'missing code',
@@ -478,6 +494,12 @@ describe('handleCallbackRoute', () => {
 
       expect(response.status).toBe(400);
       expect(response.headers.get('Content-Type')).toBe('application/json');
+
+      const malformedLogs = consoleErrorSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
+      );
+      expect(malformedLogs).toHaveLength(1);
+      expect(malformedLogs[0]![0]).toContain('falling back to JSON 400');
     });
 
     it('ignores returnPathname on the error path', async () => {

@@ -402,17 +402,15 @@ describe('handleCallbackRoute', () => {
         throw new Error('user-side failure');
       });
 
-      await expect(
-        handleCallbackRoute({ onError, errorRedirectUrl: '/fallback' })({ request }),
-      ).rejects.toThrow('user-side failure');
+      await expect(handleCallbackRoute({ onError, errorRedirectUrl: '/fallback' })({ request })).rejects.toThrow(
+        'user-side failure',
+      );
     });
   });
 
   describe('errorRedirectUrl path', () => {
     it('returns 302 to absolute errorRedirectUrl with delete-cookies', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('boom'));
 
       const response = await handleCallbackRoute({ errorRedirectUrl: 'https://example.com/sign-in?error=auth' })({
@@ -425,9 +423,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('resolves relative errorRedirectUrl against request origin', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('boom'));
 
       const response = await handleCallbackRoute({ errorRedirectUrl: '/sign-in?error=auth_failed' })({ request });
@@ -437,9 +433,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('runs onError and ignores errorRedirectUrl when both are set', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('boom'));
       const onError = vi.fn(() => new Response('custom', { status: 418 }));
 
@@ -456,9 +450,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('falls back to JSON when errorRedirectUrl is malformed', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('boom'));
 
       const response = await handleCallbackRoute({ errorRedirectUrl: 'http://[::1' })({ request });
@@ -489,9 +481,7 @@ describe('handleCallbackRoute', () => {
     });
 
     it('ignores returnPathname on the error path', async () => {
-      const request = new Request(
-        `http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`,
-      );
+      const request = new Request(`http://example.com/callback?code=invalid&state=${encodeURIComponent(SEALED_STATE)}`);
       mockHandleCallback.mockRejectedValue(new Error('boom'));
 
       const response = await handleCallbackRoute({

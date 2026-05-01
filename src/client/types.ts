@@ -1,4 +1,4 @@
-import { ClientUserInfo, NoUserInfo } from '../server/server-functions.js';
+import type { ClientUserInfo, NoUserInfo } from '../server/server-functions.js';
 import type { User, Impersonator } from '../types.js';
 
 export interface AuthContextType {

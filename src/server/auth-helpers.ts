@@ -63,6 +63,28 @@ export async function getSessionWithRefreshToken(): Promise<{
 }
 
 /**
+ * Maps an already-narrowed authenticated AuthResult to the shared base user info
+ * shape (without accessToken). Callers must check `auth.user` before calling.
+ * Both action-bodies.ts and server-fn-bodies.ts use this to avoid duplicating
+ * the claims → public-info field mapping.
+ */
+export function mapAuthToBaseInfo<T extends Record<string, unknown> = Record<string, unknown>>(
+  auth: AuthResult<T> & { user: User },
+) {
+  return {
+    user: auth.user,
+    sessionId: auth.sessionId,
+    organizationId: auth.claims?.org_id,
+    role: auth.claims?.role,
+    roles: auth.claims?.roles,
+    permissions: auth.claims?.permissions,
+    entitlements: auth.claims?.entitlements,
+    featureFlags: auth.claims?.feature_flags,
+    impersonator: auth.impersonator,
+  };
+}
+
+/**
  * Refreshes the session with an optional organization ID.
  */
 export async function refreshSession(organizationId?: string) {

@@ -1,53 +1,9 @@
 import { redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import type { Impersonator, User } from '../types.js';
-import { getRawAuthFromContext, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
-import { getAuthkit } from './authkit-loader.js';
-import { getAuthKitContextOrNull } from './context.js';
 
 // Type-only import - safe for bundling
-import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
-import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
-
-type AuthorizationResult = {
-  url: string;
-  response?: Response;
-  headers?: HeadersBag;
-};
-
-/**
- * Forward every `Set-Cookie` (and any other header) emitted by the upstream
- * authorization-URL call through middleware's pending-header channel so the
- * PKCE verifier cookie lands on the outgoing response. Each `Set-Cookie` entry
- * is appended as its own header — never comma-joined — so multi-cookie
- * emissions survive as distinct HTTP headers.
- */
-function forwardAuthorizationCookies(result: AuthorizationResult): string {
-  const ctx = getAuthKitContextOrNull();
-  if (!ctx?.__setPendingHeader) {
-    throw new Error(
-      '[authkit-tanstack-react-start] PKCE cookie could not be set: middleware context unavailable. Ensure authkitMiddleware is registered in your request middleware stack.',
-    );
-  }
-
-  // Upstream contract guarantees one of `headers` or `response` is populated;
-  // if neither emits, fail loudly so a dropped PKCE verifier doesn't surface
-  // later as an opaque state-mismatch in the callback.
-  if (!emitHeadersFrom(result, ctx.__setPendingHeader)) {
-    throw new Error(
-      '[authkit-tanstack-react-start] authorization result had neither headers nor response; PKCE verifier cookie could not be forwarded. This indicates a version mismatch with @workos/authkit-session.',
-    );
-  }
-
-  return result.url;
-}
-
-/** Inject middleware-configured redirectUri only when caller did not provide one. */
-function applyContextRedirectUri<T extends { redirectUri?: string } | undefined>(options: T): T {
-  const contextRedirectUri = getRedirectUriFromContext();
-  if (!contextRedirectUri || options?.redirectUri) return options;
-  return { ...options, redirectUri: contextRedirectUri } as T;
-}
+import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
 
 // Type exports - re-export shared types from authkit-session
 export type { GetAuthURLOptions };
@@ -71,20 +27,15 @@ export interface NoUserInfo {
   user: null;
 }
 
+/** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
+type SignInUrlOptions = Omit<GetAuthURLOptions, 'screenHint'>;
+
 /** Internal: Returns logout URL for client-side sign out. */
 export const getSignOutUrl = createServerFn({ method: 'POST' })
   .inputValidator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }): Promise<{ url: string | null }> => {
-    const auth = getAuthFromContext();
-
-    if (!auth.user || !auth.sessionId) {
-      return { url: null };
-    }
-
-    const authkit = await getAuthkit();
-    const { logoutUrl } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
-
-    return { url: logoutUrl };
+    const { getSignOutUrlBody } = await import('./server-fn-bodies.js');
+    return getSignOutUrlBody(data);
   });
 
 /**
@@ -107,59 +58,24 @@ export const getSignOutUrl = createServerFn({ method: 'POST' })
 export const signOut = createServerFn({ method: 'POST' })
   .inputValidator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }) => {
-    const auth = getAuthFromContext();
+    const { signOutBody } = await import('./server-fn-bodies.js');
+    const plan = await signOutBody(data);
 
-    if (!auth.user || !auth.sessionId) {
-      // No session to terminate
+    if (plan.kind === 'returnTo') {
       throw redirect({
-        to: data?.returnTo || '/',
+        to: plan.to,
         throw: true,
         reloadDocument: true,
       });
     }
 
-    // Get authkit instance (lazy loaded)
-    const authkit = await getAuthkit();
-
-    // Get logout URL and session clear headers from storage
-    const { logoutUrl, headers: headersBag } = await authkit.signOut(auth.sessionId, { returnTo: data?.returnTo });
-
-    // Convert HeadersBag to Headers for TanStack compatibility
-    const headers = new Headers();
-    if (headersBag) {
-      forEachHeaderBagEntry(headersBag, (key, value) => headers.append(key, value));
-    }
-
-    // Clear session and redirect to WorkOS logout
     throw redirect({
-      href: logoutUrl,
+      href: plan.href,
       throw: true,
       reloadDocument: true,
-      headers,
+      headers: plan.headers,
     });
   });
-
-/** Internal function to get auth from context (server-only). */
-export function getAuthFromContext(): UserInfo | NoUserInfo {
-  const auth = getRawAuthFromContext();
-
-  if (!auth.user) {
-    return { user: null };
-  }
-
-  return {
-    user: auth.user,
-    sessionId: auth.sessionId!,
-    organizationId: auth.claims?.org_id,
-    role: auth.claims?.role,
-    roles: auth.claims?.roles,
-    permissions: auth.claims?.permissions,
-    entitlements: auth.claims?.entitlements,
-    featureFlags: auth.claims?.feature_flags,
-    impersonator: auth.impersonator,
-    accessToken: auth.accessToken!,
-  };
-}
 
 /**
  * Get authentication context from the current request.
@@ -183,8 +99,9 @@ export function getAuthFromContext(): UserInfo | NoUserInfo {
  * });
  * ```
  */
-export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | NoUserInfo => {
-  return getAuthFromContext();
+export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promise<UserInfo | NoUserInfo> => {
+  const { getAuthBody } = await import('./server-fn-bodies.js');
+  return getAuthBody();
 });
 
 /**
@@ -193,13 +110,10 @@ export const getAuth = createServerFn({ method: 'GET' }).handler((): UserInfo | 
  */
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .inputValidator((options?: GetAuthURLOptions) => options)
-  .handler(async ({ data: options = {} }) => {
-    const authkit = await getAuthkit();
-    return forwardAuthorizationCookies(await authkit.createAuthorization(undefined, applyContextRedirectUri(options)));
+  .handler(async ({ data: options }): Promise<string> => {
+    const { getAuthorizationUrlBody } = await import('./server-fn-bodies.js');
+    return getAuthorizationUrlBody(options);
   });
-
-/** Options for getSignInUrl/getSignUpUrl - all GetAuthURLOptions except screenHint */
-type SignInUrlOptions = Omit<GetAuthURLOptions, 'screenHint'>;
 
 /**
  * Get the sign-in URL.
@@ -219,10 +133,9 @@ type SignInUrlOptions = Omit<GetAuthURLOptions, 'screenHint'>;
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
-  .handler(async ({ data }) => {
-    const options = typeof data === 'string' ? { returnPathname: data } : data;
-    const authkit = await getAuthkit();
-    return forwardAuthorizationCookies(await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
+  .handler(async ({ data }): Promise<string> => {
+    const { getSignInUrlBody } = await import('./server-fn-bodies.js');
+    return getSignInUrlBody(data);
   });
 
 /**
@@ -243,10 +156,9 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  */
 export const getSignUpUrl = createServerFn({ method: 'GET' })
   .inputValidator((data?: string | SignInUrlOptions) => data)
-  .handler(async ({ data }) => {
-    const options = typeof data === 'string' ? { returnPathname: data } : data;
-    const authkit = await getAuthkit();
-    return forwardAuthorizationCookies(await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
+  .handler(async ({ data }): Promise<string> => {
+    const { getSignUpUrlBody } = await import('./server-fn-bodies.js');
+    return getSignUpUrlBody(data);
   });
 
 /**
@@ -263,28 +175,12 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
 export const switchToOrganization = createServerFn({ method: 'POST' })
   .inputValidator((data: { organizationId: string; returnTo?: string }) => data)
   .handler(async ({ data }): Promise<UserInfo> => {
-    const auth = getAuthFromContext();
+    const { switchToOrganizationBody } = await import('./server-fn-bodies.js');
+    const plan = await switchToOrganizationBody(data);
 
-    if (!auth.user) {
-      throw redirect({ to: data.returnTo || '/' });
+    if (plan.kind === 'redirect') {
+      throw redirect({ to: plan.to });
     }
 
-    const result = await refreshSession(data.organizationId);
-
-    if (!result?.user) {
-      throw redirect({ to: data.returnTo || '/' });
-    }
-
-    return {
-      user: result.user,
-      sessionId: result.sessionId,
-      organizationId: result.claims?.org_id,
-      role: result.claims?.role,
-      roles: result.claims?.roles,
-      permissions: result.claims?.permissions,
-      entitlements: result.claims?.entitlements,
-      featureFlags: result.claims?.feature_flags,
-      impersonator: result.impersonator,
-      accessToken: result.accessToken,
-    };
+    return plan.user;
   });

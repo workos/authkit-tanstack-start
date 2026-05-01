@@ -23,6 +23,20 @@ vi.mock('./auth-helpers', () => ({
   },
   isAuthConfigured: () => mockIsConfigured,
   refreshSession: vi.fn(),
+  mapAuthToBaseInfo: (auth: any) => {
+    if (!auth.user) return { user: null };
+    return {
+      user: auth.user,
+      sessionId: auth.sessionId,
+      organizationId: auth.claims?.org_id,
+      role: auth.claims?.role,
+      roles: auth.claims?.roles,
+      permissions: auth.claims?.permissions,
+      entitlements: auth.claims?.entitlements,
+      featureFlags: auth.claims?.feature_flags,
+      impersonator: auth.impersonator,
+    };
+  },
 }));
 
 const mockGetOrganization = vi.fn();

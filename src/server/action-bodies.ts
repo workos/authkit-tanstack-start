@@ -1,27 +1,9 @@
-import { getRawAuthFromContext, isAuthConfigured, refreshSession } from './auth-helpers.js';
+import { getRawAuthFromContext, isAuthConfigured, mapAuthToBaseInfo, refreshSession } from './auth-helpers.js';
 import type { ClientUserInfo, NoUserInfo, UserInfo } from './server-functions.js';
 
 export interface OrganizationInfo {
   id: string;
   name: string;
-}
-
-function sanitizeAuthForClient(auth: any): Omit<UserInfo, 'accessToken'> | NoUserInfo {
-  if (!auth.user) {
-    return { user: null };
-  }
-
-  return {
-    user: auth.user,
-    sessionId: auth.sessionId,
-    organizationId: auth.claims?.org_id,
-    role: auth.claims?.role,
-    roles: auth.claims?.roles,
-    permissions: auth.claims?.permissions,
-    entitlements: auth.claims?.entitlements,
-    featureFlags: auth.claims?.feature_flags,
-    impersonator: auth.impersonator,
-  };
 }
 
 export function checkSessionBody(): boolean {
@@ -38,7 +20,9 @@ export function checkSessionBody(): boolean {
 }
 
 export function getAuthBody(): ClientUserInfo | NoUserInfo {
-  return sanitizeAuthForClient(getRawAuthFromContext());
+  const auth = getRawAuthFromContext();
+  if (!auth.user) return { user: null };
+  return mapAuthToBaseInfo(auth);
 }
 
 export async function refreshAuthBody(options?: {
@@ -50,7 +34,7 @@ export async function refreshAuthBody(options?: {
     return { user: null };
   }
 
-  return sanitizeAuthForClient(result);
+  return mapAuthToBaseInfo(result);
 }
 
 export function getAccessTokenBody(): string | undefined {
@@ -80,7 +64,7 @@ export async function switchToOrganizationBody(data: {
     return { user: null };
   }
 
-  return sanitizeAuthForClient(result);
+  return mapAuthToBaseInfo(result);
 }
 
 export async function getOrganizationBody(organizationId: string): Promise<OrganizationInfo | null> {

@@ -1,5 +1,5 @@
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
-import { getRawAuthFromContext, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
+import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
 import { getAuthKitContextOrNull } from './context.js';
 import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
@@ -48,23 +48,8 @@ function applyContextRedirectUri<T extends { redirectUri?: string } | undefined>
 /** Internal: project raw auth context into the public UserInfo shape. */
 function getAuthFromContext(): UserInfo | NoUserInfo {
   const auth = getRawAuthFromContext();
-
-  if (!auth.user) {
-    return { user: null };
-  }
-
-  return {
-    user: auth.user,
-    sessionId: auth.sessionId!,
-    organizationId: auth.claims?.org_id,
-    role: auth.claims?.role,
-    roles: auth.claims?.roles,
-    permissions: auth.claims?.permissions,
-    entitlements: auth.claims?.entitlements,
-    featureFlags: auth.claims?.feature_flags,
-    impersonator: auth.impersonator,
-    accessToken: auth.accessToken!,
-  };
+  if (!auth.user) return { user: null };
+  return { ...mapAuthToBaseInfo(auth), accessToken: auth.accessToken };
 }
 
 /**
@@ -154,17 +139,6 @@ export async function switchToOrganizationBody(data: {
 
   return {
     kind: 'user',
-    user: {
-      user: result.user,
-      sessionId: result.sessionId,
-      organizationId: result.claims?.org_id,
-      role: result.claims?.role,
-      roles: result.claims?.roles,
-      permissions: result.claims?.permissions,
-      entitlements: result.claims?.entitlements,
-      featureFlags: result.claims?.feature_flags,
-      impersonator: result.impersonator,
-      accessToken: result.accessToken,
-    },
+    user: { ...mapAuthToBaseInfo(result), accessToken: result.accessToken },
   };
 }

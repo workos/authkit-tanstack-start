@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/workos/authkit-tanstack-start/compare/v0.7.0...v0.8.0) (2026-05-01)
+
+
+### Features
+
+* **callback:** centralize logging and add errorRedirectUrl option ([dcc9788](https://github.com/workos/authkit-tanstack-start/commit/dcc97882957fca41178d789e737f6ed987bebaef))
+
+
+### Bug Fixes
+
+* eliminate server-side bundle leak via lazy handler bodies ([#75](https://github.com/workos/authkit-tanstack-start/issues/75)) ([df41d22](https://github.com/workos/authkit-tanstack-start/commit/df41d221204e255f91838e6d33ee594a10abf8b6))
+
 ## [0.7.0](https://github.com/workos/authkit-tanstack-start/compare/v0.6.0...v0.7.0) (2026-04-24)
 
 

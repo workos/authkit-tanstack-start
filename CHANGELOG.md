@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/workos/authkit-tanstack-start/compare/v0.8.0...v0.8.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* add explicit types to implicit any params in server spec ([#78](https://github.com/workos/authkit-tanstack-start/issues/78)) ([92526e8](https://github.com/workos/authkit-tanstack-start/commit/92526e8a6ba4bea7e7c6f2ddc3e9b01aad570301))
+
 ## [0.8.0](https://github.com/workos/authkit-tanstack-start/compare/v0.7.0...v0.8.0) (2026-05-01)
 
 

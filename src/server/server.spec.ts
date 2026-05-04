@@ -347,7 +347,7 @@ describe('handleCallbackRoute', () => {
       await handleCallbackRoute()({ request });
 
       const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
       );
       expect(callbackErrorLogs).toHaveLength(1);
       expect(callbackErrorLogs[0]![1]).toBe(originalError);
@@ -389,7 +389,7 @@ describe('handleCallbackRoute', () => {
       await handleCallbackRoute(options ?? {})({ request });
 
       const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
       );
       expect(callbackErrorLogs).toHaveLength(1);
     });
@@ -460,7 +460,7 @@ describe('handleCallbackRoute', () => {
       expect(response.headers.get('Location')).toBeNull();
 
       const callbackErrorLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
       );
       expect(callbackErrorLogs).toHaveLength(1);
     });
@@ -478,10 +478,10 @@ describe('handleCallbackRoute', () => {
       expect(response.headers.getSetCookie().some((c) => c.startsWith(`${PKCE_COOKIE_NAME}=`))).toBe(true);
 
       const callbackLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('OAuth callback failed'),
       );
       const malformedLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
       );
       expect(callbackLogs).toHaveLength(1);
       expect(malformedLogs).toHaveLength(1);
@@ -496,7 +496,7 @@ describe('handleCallbackRoute', () => {
       expect(response.headers.get('Content-Type')).toBe('application/json');
 
       const malformedLogs = consoleErrorSpy.mock.calls.filter(
-        (args) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
+        (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('errorRedirectUrl is malformed'),
       );
       expect(malformedLogs).toHaveLength(1);
       expect(malformedLogs[0]![0]).toContain('falling back to JSON 400');

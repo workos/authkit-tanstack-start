@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/workos/authkit-tanstack-start/compare/v0.8.1...v0.8.2) (2026-05-08)
+
+
+### Bug Fixes
+
+* align scheduled refresh buffer with isExpiring buffer ([#80](https://github.com/workos/authkit-tanstack-start/issues/80)) ([de3ea6e](https://github.com/workos/authkit-tanstack-start/commit/de3ea6e6c4430f58196a2382ebbf733c99630ca5))
+
 ## [0.8.1](https://github.com/workos/authkit-tanstack-start/compare/v0.8.0...v0.8.1) (2026-05-04)
 
 

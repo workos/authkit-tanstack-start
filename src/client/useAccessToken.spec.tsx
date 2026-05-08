@@ -111,6 +111,7 @@ describe('useAccessToken', () => {
       expiresAt: 9999999999,
       isExpiring: false,
       timeUntilExpiry: 3600,
+      totalTokenLifetime: 3600,
     });
 
     vi.mocked(tokenStore.getAccessTokenSilently).mockResolvedValue('test-token');

@@ -330,4 +330,40 @@ describe('TokenStore', () => {
       expect(snapshot.error?.message).toBe('string error');
     });
   });
+
+  describe('refresh schedule buffer', () => {
+    it('scheduled refresh fires a real refresh while the token is in the isExpiring state', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const initialPayload = {
+        sub: 'user_123',
+        sid: 'session_123',
+        iat: now,
+        exp: now + 300,
+      };
+      const initialToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(initialPayload))}.mock-signature`;
+
+      const refreshedPayload = {
+        sub: 'user_123',
+        sid: 'session_123',
+        iat: now,
+        exp: now + 3600,
+      };
+      const refreshedToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(refreshedPayload))}.mock-signature`;
+
+      document.cookie = `workos-access-token=${encodeURIComponent(initialToken)}`;
+      vi.mocked(refreshAccessTokenAction).mockResolvedValue(refreshedToken);
+
+      const localStore = new TokenStore();
+      expect(refreshAccessTokenAction).not.toHaveBeenCalled();
+
+      // Advance past the originally scheduled fire time. If the schedule buffer
+      // and the isExpiring buffer disagree, the timer's callback will see
+      // isExpiring=false and silently no-op, leaving call count at 0.
+      await vi.advanceTimersByTimeAsync(300_000);
+
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      localStore.reset();
+    });
+  });
 });

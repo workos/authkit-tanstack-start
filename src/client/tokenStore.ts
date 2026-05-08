@@ -8,10 +8,18 @@ interface TokenState {
 }
 
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+const SHORT_TOKEN_LIFETIME_SECONDS = 300;
+const SHORT_TOKEN_EXPIRY_BUFFER_SECONDS = 30;
 const MIN_REFRESH_DELAY_SECONDS = 15;
 const MAX_REFRESH_DELAY_SECONDS = 24 * 60 * 60;
 const RETRY_DELAY_SECONDS = 300;
 const jwtCookieName = 'workos-access-token';
+
+function getExpiryBuffer(totalTokenLifetime: number): number {
+  return totalTokenLifetime <= SHORT_TOKEN_LIFETIME_SECONDS
+    ? SHORT_TOKEN_EXPIRY_BUFFER_SECONDS
+    : TOKEN_EXPIRY_BUFFER_SECONDS;
+}
 
 export class TokenStore {
   private state: TokenState;
@@ -35,7 +43,7 @@ export class TokenStore {
       this.fastCookieConsumed = true;
       const tokenData = this.parseToken(initialToken);
       if (tokenData) {
-        this.scheduleRefresh(tokenData.timeUntilExpiry);
+        this.scheduleRefresh(tokenData);
       }
     }
   }
@@ -69,26 +77,33 @@ export class TokenStore {
     this.notify();
   }
 
-  private scheduleRefresh(timeUntilExpiry?: number) {
+  private scheduleRefresh(tokenData?: { timeUntilExpiry: number; totalTokenLifetime: number }) {
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;
     }
 
-    const delay =
-      typeof timeUntilExpiry === 'undefined' ? RETRY_DELAY_SECONDS * 1000 : this.getRefreshDelay(timeUntilExpiry);
+    const delay = tokenData === undefined ? RETRY_DELAY_SECONDS * 1000 : this.getRefreshDelay(tokenData);
 
     this.refreshTimeout = setTimeout(() => {
       void this.getAccessTokenSilently().catch(() => {});
     }, delay);
   }
 
-  private getRefreshDelay(timeUntilExpiry: number) {
-    if (timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_SECONDS) {
+  private getRefreshDelay({
+    timeUntilExpiry,
+    totalTokenLifetime,
+  }: {
+    timeUntilExpiry: number;
+    totalTokenLifetime: number;
+  }) {
+    const bufferSeconds = getExpiryBuffer(totalTokenLifetime);
+
+    if (timeUntilExpiry <= bufferSeconds) {
       return 0;
     }
 
-    const idealDelay = (timeUntilExpiry - TOKEN_EXPIRY_BUFFER_SECONDS) * 1000;
+    const idealDelay = (timeUntilExpiry - bufferSeconds) * 1000;
 
     return Math.min(Math.max(idealDelay, MIN_REFRESH_DELAY_SECONDS * 1000), MAX_REFRESH_DELAY_SECONDS * 1000);
   }
@@ -178,21 +193,17 @@ export class TokenStore {
       }
 
       const timeUntilExpiry = payload.exp - now;
-
-      let bufferSeconds = TOKEN_EXPIRY_BUFFER_SECONDS;
       const totalTokenLifetime = payload.exp - (payload.iat || now);
+      const bufferSeconds = getExpiryBuffer(totalTokenLifetime);
 
-      if (totalTokenLifetime <= 300) {
-        bufferSeconds = 30;
-      }
-
-      const isExpiring = payload.exp < now + bufferSeconds;
+      const isExpiring = payload.exp <= now + bufferSeconds;
 
       return {
         payload,
         expiresAt: payload.exp,
         isExpiring,
         timeUntilExpiry,
+        totalTokenLifetime,
       };
     } catch {
       return null;
@@ -240,7 +251,7 @@ export class TokenStore {
 
       const tokenData = this.parseToken(fastToken);
       if (tokenData) {
-        this.scheduleRefresh(tokenData.timeUntilExpiry);
+        this.scheduleRefresh(tokenData);
       }
 
       return fastToken;
@@ -320,7 +331,7 @@ export class TokenStore {
 
         const tokenData = this.parseToken(token);
         if (tokenData) {
-          this.scheduleRefresh(tokenData.timeUntilExpiry);
+          this.scheduleRefresh(tokenData);
         }
 
         return token;

@@ -1,15 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start';
+import type { AuthKitMiddlewareOptions } from './types.js';
 
-/**
- * Options for AuthKit middleware.
- */
-export interface AuthKitMiddlewareOptions {
-  /**
-   * Override the default redirect URI for OAuth callbacks.
-   * Useful for dynamic environments like Vercel preview deployments.
-   */
-  redirectUri?: string;
-}
+export type { AuthKitMiddlewareOptions };
 
 /**
  * AuthKit middleware for TanStack Start.

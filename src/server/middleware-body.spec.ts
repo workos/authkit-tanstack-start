@@ -120,7 +120,9 @@ describe('middlewareBody', () => {
         refreshedSessionData: refreshedData,
       });
       mockAuthkit.saveSession.mockResolvedValue({
-        headers: { 'Set-Cookie': 'wos-session=new_value; Path=/' },
+        response: new Response('', {
+          headers: { 'Set-Cookie': 'wos-session=new_value; Path=/' },
+        }),
       });
 
       const mockRequest = new Request('http://test.local');
@@ -131,9 +133,10 @@ describe('middlewareBody', () => {
         next: vi.fn(async () => ({ response: mockResponse })),
       };
 
-      await middlewareBody(args);
+      const result = await middlewareBody(args);
 
       expect(mockAuthkit.saveSession).toHaveBeenCalledWith(undefined, refreshedData);
+      expect(result.response.headers.get('Set-Cookie')).toContain('wos-session=new_value');
     });
 
     it('provides correct context shape to downstream handlers', async () => {

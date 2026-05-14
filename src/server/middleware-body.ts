@@ -1,5 +1,5 @@
 import { getAuthkit, validateConfig, getConfig } from './authkit-loader.js';
-import type { AuthKitMiddlewareOptions } from './middleware.js';
+import type { AuthKitMiddlewareOptions } from './types.js';
 
 let configValidated = false;
 
@@ -32,9 +32,8 @@ export async function middlewareBody(args: any, options?: AuthKitMiddlewareOptio
 
   if (refreshedSessionData) {
     const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
-    const setCookieHeader = sessionResponse?.headers.get('Set-Cookie');
-    if (setCookieHeader) {
-      pendingHeaders.append('Set-Cookie', setCookieHeader);
+    for (const cookie of sessionResponse?.headers.getSetCookie() ?? []) {
+      pendingHeaders.append('Set-Cookie', cookie);
     }
   }
 

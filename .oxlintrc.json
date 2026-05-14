@@ -6,7 +6,7 @@
   "ignorePatterns": ["dist/", "example/src/routeTree.gen.ts"],
   "overrides": [
     {
-      "files": ["src/server/actions.ts", "src/server/server-functions.ts"],
+      "files": ["src/server/actions.ts", "src/server/server-functions.ts", "src/server/middleware.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -19,7 +19,8 @@
                   "./context*",
                   "./headers-bag*",
                   "./action-bodies*",
-                  "./server-fn-bodies*"
+                  "./server-fn-bodies*",
+                  "./middleware-body*"
                 ],
                 "allowTypeImports": true,
                 "message": "Static value imports of server-only modules are forbidden in this file. Move logic into action-bodies.ts or server-fn-bodies.ts and use a dynamic import inside the handler. See CLAUDE.md."

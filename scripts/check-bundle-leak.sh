@@ -18,6 +18,7 @@ FINGERPRINTS=(
   "@workos-inc/node"
   "iron-session"
   "iron-webcrypto"
+  "eventemitter3"
   # Code fingerprints (more robust against minification)
   "FeatureFlagsRuntimeClient"
   "The listener must be a function"

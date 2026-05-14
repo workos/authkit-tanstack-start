@@ -27,8 +27,8 @@ If applicable, add screenshots to help explain your problem.
 
 - OS: [e.g. iOS]
 - Browser [e.g. chrome, safari]
-- authkit-nextjs version [e.g. 0.12.0]
-- Next.js version [e.g. 14.2.5]
+- authkit-tanstack-start version [e.g. 0.12.0]
+- Tanstack Start version [e.g. 14.2.5]
 
 **Additional context**
 Add any other context about the problem here.

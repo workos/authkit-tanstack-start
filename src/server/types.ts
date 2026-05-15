@@ -1,6 +1,17 @@
 import type { User, Impersonator } from '../types.js';
 
 /**
+ * Options for AuthKit middleware.
+ */
+export interface AuthKitMiddlewareOptions {
+  /**
+   * Override the default redirect URI for OAuth callbacks.
+   * Useful for dynamic environments like Vercel preview deployments.
+   */
+  redirectUri?: string;
+}
+
+/**
  * OAuth tokens from upstream identity provider (e.g., Google, Microsoft)
  * Structure varies by provider but typically includes access_token and optional refresh_token
  */

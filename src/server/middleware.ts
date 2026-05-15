@@ -1,18 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { getAuthkit, validateConfig, getConfig } from './authkit-loader.js';
+import type { AuthKitMiddlewareOptions } from './types.js';
 
-let configValidated = false;
-
-/**
- * Options for AuthKit middleware.
- */
-export interface AuthKitMiddlewareOptions {
-  /**
-   * Override the default redirect URI for OAuth callbacks.
-   * Useful for dynamic environments like Vercel preview deployments.
-   */
-  redirectUri?: string;
-}
+export type { AuthKitMiddlewareOptions };
 
 /**
  * AuthKit middleware for TanStack Start.
@@ -38,63 +27,7 @@ export interface AuthKitMiddlewareOptions {
  */
 export const authkitMiddleware = (options?: AuthKitMiddlewareOptions) => {
   return createMiddleware().server(async (args) => {
-    const authkit = await getAuthkit();
-
-    if (!configValidated) {
-      await validateConfig();
-      configValidated = true;
-    }
-
-    const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
-    const pendingHeaders = new Headers();
-
-    const result = await args.next({
-      context: {
-        auth: () => auth,
-        request: args.request,
-        redirectUri: options?.redirectUri ?? (await getConfig('redirectUri')),
-        __setPendingHeader: (key: string, value: string) => {
-          // Use append for Set-Cookie to support multiple cookies
-          if (key.toLowerCase() === 'set-cookie') {
-            pendingHeaders.append(key, value);
-          } else {
-            pendingHeaders.set(key, value);
-          }
-        },
-      },
-    });
-
-    // Apply refreshed session cookie. Context is unavailable after args.next(),
-    // so saveSession returns headers on the response instead of via context.
-    if (refreshedSessionData) {
-      const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
-      // Extract Set-Cookie headers from response and add to pendingHeaders
-      const setCookieHeader = sessionResponse?.headers.get('Set-Cookie');
-      if (setCookieHeader) {
-        pendingHeaders.append('Set-Cookie', setCookieHeader);
-      }
-    }
-
-    const headerEntries = [...pendingHeaders];
-    if (headerEntries.length === 0) {
-      return result;
-    }
-
-    const newResponse = new Response(result.response.body, {
-      status: result.response.status,
-      statusText: result.response.statusText,
-      headers: result.response.headers,
-    });
-
-    for (const [key, value] of headerEntries) {
-      // Use append for Set-Cookie to preserve multiple cookie values
-      if (key.toLowerCase() === 'set-cookie') {
-        newResponse.headers.append(key, value);
-      } else {
-        newResponse.headers.set(key, value);
-      }
-    }
-
-    return { ...result, response: newResponse };
+    const { middlewareBody } = await import('./middleware-body.js');
+    return middlewareBody(args, options);
   });
 };

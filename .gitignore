@@ -16,5 +16,8 @@ yarn.lock
 .vinxi/
 dist/
 coverage/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
 
 test-results/

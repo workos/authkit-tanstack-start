@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "deploy": "node --experimental-strip-types ../scripts/deploy-example-cloudflare.ts",
+    "cf-typegen": "wrangler types",
     "start": "vite start",
     "typecheck": "tsc --noEmit"
   },
@@ -26,6 +29,7 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.37.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
@@ -34,6 +38,7 @@
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.92.0"
   }
 }

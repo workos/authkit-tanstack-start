@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.3](https://github.com/workos/authkit-tanstack-start/compare/v0.8.2...v0.8.3) (2026-05-15)
+
+
+### Bug Fixes
+
+* eliminate middleware bundle leak via lazy dynamic import ([#85](https://github.com/workos/authkit-tanstack-start/issues/85)) ([b9a9592](https://github.com/workos/authkit-tanstack-start/commit/b9a95926d20d486b6db3dda2d64a9ea4d8b22660))
+
 ## [0.8.2](https://github.com/workos/authkit-tanstack-start/compare/v0.8.1...v0.8.2) (2026-05-08)
 
 

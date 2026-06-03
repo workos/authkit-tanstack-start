@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4](https://github.com/workos/authkit-tanstack-start/compare/v0.8.3...v0.8.4) (2026-06-02)
+
+
+### Bug Fixes
+
+* **client:** remove useNavigate from AuthKitProvider to avoid SSR warning ([#59](https://github.com/workos/authkit-tanstack-start/issues/59)) ([85a288e](https://github.com/workos/authkit-tanstack-start/commit/85a288ea631925b8d67d14a9ddfd384d913dd83e)), closes [#57](https://github.com/workos/authkit-tanstack-start/issues/57)
+
 ## [0.8.3](https://github.com/workos/authkit-tanstack-start/compare/v0.8.2...v0.8.3) (2026-05-15)
 
 

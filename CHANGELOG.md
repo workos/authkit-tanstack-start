@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.5](https://github.com/workos/authkit-tanstack-start/compare/v0.8.4...v0.8.5) (2026-06-04)
+
+
+### Bug Fixes
+
+* update to authkit-session@0.5.3 ([#96](https://github.com/workos/authkit-tanstack-start/issues/96)) ([d8acfc0](https://github.com/workos/authkit-tanstack-start/commit/d8acfc097698f1cc8ce787b75c5bd7c19095676c))
+
 ## [0.8.4](https://github.com/workos/authkit-tanstack-start/compare/v0.8.3...v0.8.4) (2026-06-02)
 
 

@@ -1,7 +1,7 @@
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
 import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
-import { getAuthKitContextOrNull } from './context.js';
+import { getInternalAuthKitContextOrNull } from './context.js';
 import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
 import type { NoUserInfo, UserInfo } from './server-functions.js';
 
@@ -19,7 +19,7 @@ type AuthorizationResult = {
  * emissions survive as distinct HTTP headers.
  */
 function forwardAuthorizationCookies(result: AuthorizationResult): string {
-  const ctx = getAuthKitContextOrNull();
+  const ctx = getInternalAuthKitContextOrNull();
   if (!ctx?.__setPendingHeader) {
     throw new Error(
       '[authkit-tanstack-react-start] PKCE cookie could not be set: middleware context unavailable. Ensure authkitMiddleware is registered in your request middleware stack.',

@@ -1,5 +1,5 @@
 import { CookieSessionStorage } from '@workos/authkit-session';
-import { getAuthKitContextOrNull } from './context.js';
+import { getInternalAuthKitContextOrNull } from './context.js';
 import { parseCookies } from './cookie-utils.js';
 
 export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Request, Response> {
@@ -22,7 +22,7 @@ export class TanStackStartCookieSessionStorage extends CookieSessionStorage<Requ
     response: Response | undefined,
     headers: Record<string, string>,
   ): Promise<{ response: Response }> {
-    const ctx = getAuthKitContextOrNull();
+    const ctx = getInternalAuthKitContextOrNull();
 
     // When middleware context is available, use it exclusively
     if (ctx?.__setPendingHeader) {

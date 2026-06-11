@@ -17,6 +17,11 @@ describe('SDK exports', () => {
     // Middleware
     expect(exports.authkitMiddleware).toBeDefined();
 
+    // Auth context accessors (public replacement for the middleware's
+    // inferred downstream context type, lost in the lazy-shell refactor)
+    expect(exports.getAuthKitContext).toBeDefined();
+    expect(exports.getAuthKitContextOrNull).toBeDefined();
+
     // Error classes re-exported from authkit-session for adopter error handling
     expect(exports.OAuthStateMismatchError).toBeDefined();
     expect(exports.PKCECookieMissingError).toBeDefined();

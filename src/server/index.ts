@@ -15,6 +15,8 @@ export type { HandleCallbackOptions, HandleAuthSuccessData, OauthTokens } from '
 
 export { authkitMiddleware, type AuthKitMiddlewareOptions } from './middleware.js';
 
+export { getAuthKitContext, getAuthKitContextOrNull, type AuthKitContext } from './context.js';
+
 export { getAuthkit, type AuthService } from './authkit-loader.js';
 
 export {

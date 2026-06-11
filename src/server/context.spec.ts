@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, expectTypeOf, vi, beforeEach } from 'vitest';
 
 // Store original mock state
 let mockContext: any = undefined;
@@ -13,7 +13,7 @@ vi.mock('@tanstack/react-start', () => ({
   },
 }));
 
-import { getAuthKitContext, getAuthKitContextOrNull } from './context';
+import { getAuthKitContext, getAuthKitContextOrNull, getInternalAuthKitContextOrNull } from './context';
 
 describe('Context Functions', () => {
   beforeEach(() => {
@@ -125,14 +125,36 @@ describe('Context Functions', () => {
         __setPendingHeader: setPendingHeader,
       };
 
-      const ctx = getAuthKitContext();
-      ctx.__setPendingHeader('Set-Cookie', 'session=abc123');
-      ctx.__setPendingHeader('X-Custom', 'value');
+      const ctx = getInternalAuthKitContextOrNull();
+      ctx?.__setPendingHeader('Set-Cookie', 'session=abc123');
+      ctx?.__setPendingHeader('X-Custom', 'value');
 
       expect(pendingHeaders).toEqual({
         'Set-Cookie': 'session=abc123',
         'X-Custom': 'value',
       });
+    });
+  });
+
+  describe('public type narrowing', () => {
+    it('hides __setPendingHeader from the public context types', () => {
+      expectTypeOf(getAuthKitContext).returns.not.toHaveProperty('__setPendingHeader');
+      expectTypeOf(getAuthKitContext).returns.toHaveProperty('auth');
+      expectTypeOf(getAuthKitContext).returns.toHaveProperty('request');
+      expectTypeOf(getAuthKitContext).returns.toHaveProperty('redirectUri');
+      expectTypeOf(getInternalAuthKitContextOrNull).returns.exclude<null>().toHaveProperty('__setPendingHeader');
+    });
+
+    it('returns the same underlying context object from public and internal accessors', () => {
+      mockContext = {
+        auth: () => ({ user: { id: 'user_123' } }),
+        request: new Request('http://test.local'),
+        __setPendingHeader: vi.fn(),
+      };
+
+      expect(getAuthKitContext()).toBe(mockContext);
+      expect(getAuthKitContextOrNull()).toBe(mockContext);
+      expect(getInternalAuthKitContextOrNull()).toBe(mockContext);
     });
   });
 });

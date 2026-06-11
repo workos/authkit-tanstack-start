@@ -9,7 +9,7 @@ const mockSetPendingHeader = vi.fn();
 let mockContextAvailable = true;
 
 vi.mock('./context', () => ({
-  getAuthKitContextOrNull: () => {
+  getInternalAuthKitContextOrNull: () => {
     if (!mockContextAvailable) return null;
     return {
       auth: () => ({ user: null }),

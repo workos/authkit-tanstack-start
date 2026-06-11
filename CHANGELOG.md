@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.6](https://github.com/workos/authkit-tanstack-start/compare/v0.8.5...v0.8.6) (2026-06-11)
+
+
+### Bug Fixes
+
+* export getAuthKitContext as the public auth context accessor ([#98](https://github.com/workos/authkit-tanstack-start/issues/98)) ([ab38565](https://github.com/workos/authkit-tanstack-start/commit/ab3856527b5f916da985aaf3e8a7f2d485b703eb))
+
 ## [0.8.5](https://github.com/workos/authkit-tanstack-start/compare/v0.8.4...v0.8.5) (2026-06-04)
 
 

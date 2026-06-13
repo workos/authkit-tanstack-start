@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // Mock only the essential TanStack pieces
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => ({
-    inputValidator: () => ({
+    validator: () => ({
       handler: (fn: any) => fn,
     }),
     handler: (fn: any) => fn,

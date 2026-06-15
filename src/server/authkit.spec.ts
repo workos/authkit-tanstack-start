@@ -37,4 +37,32 @@ describe('authkit factory', () => {
     expect(createAuthService).toHaveBeenCalledTimes(1);
     expect(first).toBe(second);
   });
+
+  it('retries initialization after a failure', async () => {
+    const authkit = {
+      withAuth: vi.fn(),
+      getWorkOS: vi.fn(),
+      handleCallback: vi.fn(),
+    };
+    const createAuthService = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('initialization failed');
+      })
+      .mockReturnValue(authkit);
+
+    vi.doMock('@workos/authkit-session', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@workos/authkit-session')>();
+      return {
+        ...actual,
+        createAuthService,
+      };
+    });
+
+    const { getAuthkit } = await import('./authkit-loader');
+
+    await expect(getAuthkit()).rejects.toThrow('initialization failed');
+    await expect(getAuthkit()).resolves.toBe(authkit);
+    expect(createAuthService).toHaveBeenCalledTimes(2);
+  });
 });

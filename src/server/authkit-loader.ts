@@ -12,13 +12,17 @@ let authkitInstancePromise: Promise<AuthService<Request, Response>> | undefined;
 
 export function getAuthkit(): Promise<AuthService<Request, Response>> {
   if (!authkitInstancePromise) {
-    authkitInstancePromise = (async () => {
+    const promise = (async () => {
       const { createAuthService } = await import('@workos/authkit-session');
       const { TanStackStartCookieSessionStorage } = await import('./storage.js');
       return createAuthService({
         sessionStorageFactory: (config) => new TanStackStartCookieSessionStorage(config),
       });
     })();
+    authkitInstancePromise = promise.catch((error) => {
+      authkitInstancePromise = undefined;
+      throw error;
+    });
   }
   return authkitInstancePromise;
 }

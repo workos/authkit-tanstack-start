@@ -1,15 +1,17 @@
-import type { GetAuthorizationUrlOptions as GetAuthURLOptions, HeadersBag } from '@workos/authkit-session';
+import type {
+  AuthService,
+  CreateAuthorizationResult,
+  GetAuthorizationUrlOptions as GetAuthURLOptions,
+} from '@workos/authkit-session';
+import { selectStalePKCEVerifierCookieNames } from '@workos/authkit-session';
 import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
 import { getInternalAuthKitContextOrNull } from './context.js';
+import { parseCookies } from './cookie-utils.js';
 import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
 import type { NoUserInfo, UserInfo } from './server-functions.js';
 
-type AuthorizationResult = {
-  url: string;
-  response?: Response;
-  headers?: HeadersBag;
-};
+type AuthorizationResult = CreateAuthorizationResult<Response>;
 
 /**
  * Forward every `Set-Cookie` (and any other header) emitted by the upstream
@@ -18,7 +20,10 @@ type AuthorizationResult = {
  * is appended as its own header — never comma-joined — so multi-cookie
  * emissions survive as distinct HTTP headers.
  */
-function forwardAuthorizationCookies(result: AuthorizationResult): string {
+async function forwardAuthorizationCookies(
+  authkit: AuthService<Request, Response>,
+  result: AuthorizationResult,
+): Promise<string> {
   const ctx = getInternalAuthKitContextOrNull();
   if (!ctx?.__setPendingHeader) {
     throw new Error(
@@ -35,7 +40,50 @@ function forwardAuthorizationCookies(result: AuthorizationResult): string {
     );
   }
 
+  await evictStalePendingVerifiers(authkit, result.cookieName);
+
   return result.url;
+}
+
+/**
+ * Bound the number of pending PKCE verifier cookies.
+ *
+ * Each authorization-URL call mints a uniquely-named `wos-auth-verifier-*`
+ * cookie that never overwrites prior ones — per-flow naming exists so
+ * concurrent sign-ins (e.g. multiple tabs) don't clobber each other. The cost
+ * is that generating URLs without navigating to them (the `getSignInUrl()`-in-
+ * a-loader antipattern from issue #76) accumulates orphan cookies until their
+ * 10-minute TTL, eventually bloating the `Cookie` header into an HTTP 431.
+ *
+ * On the request that mints `keepCookieName`, evict every *other* verifier
+ * cookie once the running total would exceed the cap, keeping only the one
+ * just created. Best-effort: a cleanup failure must never break URL generation,
+ * so storage errors are swallowed. Deletes are emitted through middleware's
+ * pending-header channel via `clearPendingVerifierByName` — the same path the
+ * new cookie itself uses.
+ */
+async function evictStalePendingVerifiers(
+  authkit: AuthService<Request, Response>,
+  keepCookieName: string,
+): Promise<void> {
+  const ctx = getInternalAuthKitContextOrNull();
+  if (!ctx) return;
+
+  const cookieHeader = ctx.request.headers.get('cookie');
+  if (!cookieHeader) return;
+
+  const incomingNames = Object.keys(parseCookies(cookieHeader));
+  const stale = selectStalePKCEVerifierCookieNames(incomingNames, { keep: keepCookieName });
+  if (stale.length === 0) return;
+
+  const redirectUri = getRedirectUriFromContext();
+  for (const cookieName of stale) {
+    try {
+      await authkit.clearPendingVerifierByName(undefined, { cookieName, redirectUri });
+    } catch {
+      // Hygiene cleanup is opportunistic — orphans expire on their own TTL.
+    }
+  }
 }
 
 /** Inject middleware-configured redirectUri only when caller did not provide one. */
@@ -103,6 +151,7 @@ export function getAuthBody(): UserInfo | NoUserInfo {
 export async function getAuthorizationUrlBody(options?: GetAuthURLOptions): Promise<string> {
   const authkit = await getAuthkit();
   return forwardAuthorizationCookies(
+    authkit,
     await authkit.createAuthorization(undefined, applyContextRedirectUri(options ?? {})),
   );
 }
@@ -110,13 +159,13 @@ export async function getAuthorizationUrlBody(options?: GetAuthURLOptions): Prom
 export async function getSignInUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
+  return forwardAuthorizationCookies(authkit, await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
 }
 
 export async function getSignUpUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
+  return forwardAuthorizationCookies(authkit, await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
 }
 
 export type SwitchToOrganizationPlan = { kind: 'redirect'; to: string } | { kind: 'user'; user: UserInfo };

@@ -8,17 +8,19 @@
 
 import type { AuthService, AuthKitConfig } from '@workos/authkit-session';
 
-let authkitInstance: AuthService<Request, Response> | undefined;
+let authkitInstancePromise: Promise<AuthService<Request, Response>> | undefined;
 
-export async function getAuthkit(): Promise<AuthService<Request, Response>> {
-  if (!authkitInstance) {
-    const { createAuthService } = await import('@workos/authkit-session');
-    const { TanStackStartCookieSessionStorage } = await import('./storage.js');
-    authkitInstance = createAuthService({
-      sessionStorageFactory: (config) => new TanStackStartCookieSessionStorage(config),
-    });
+export function getAuthkit(): Promise<AuthService<Request, Response>> {
+  if (!authkitInstancePromise) {
+    authkitInstancePromise = (async () => {
+      const { createAuthService } = await import('@workos/authkit-session');
+      const { TanStackStartCookieSessionStorage } = await import('./storage.js');
+      return createAuthService({
+        sessionStorageFactory: (config) => new TanStackStartCookieSessionStorage(config),
+      });
+    })();
   }
-  return authkitInstance;
+  return authkitInstancePromise;
 }
 
 export async function getConfig<K extends keyof AuthKitConfig>(key: K): Promise<AuthKitConfig[K]> {

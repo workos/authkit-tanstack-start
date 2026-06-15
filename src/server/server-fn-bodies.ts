@@ -77,13 +77,14 @@ async function evictStalePendingVerifiers(
   if (stale.length === 0) return;
 
   const redirectUri = getRedirectUriFromContext();
-  for (const cookieName of stale) {
-    try {
-      await authkit.clearPendingVerifierByName(undefined, { cookieName, redirectUri });
-    } catch {
-      // Hygiene cleanup is opportunistic — orphans expire on their own TTL.
-    }
-  }
+  // Each delete is independent, so fire them together and isolate per-cookie
+  // failures with allSettled — a rejected clear just leaves an orphan to expire
+  // on its TTL and must never block URL generation. (In this adapter each clear
+  // only appends a Set-Cookie to the pending-header channel, so this is about
+  // error isolation more than latency.)
+  await Promise.allSettled(
+    stale.map((cookieName) => authkit.clearPendingVerifierByName(undefined, { cookieName, redirectUri })),
+  );
 }
 
 /** Inject middleware-configured redirectUri only when caller did not provide one. */
@@ -159,13 +160,19 @@ export async function getAuthorizationUrlBody(options?: GetAuthURLOptions): Prom
 export async function getSignInUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(authkit, await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})));
+  return forwardAuthorizationCookies(
+    authkit,
+    await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})),
+  );
 }
 
 export async function getSignUpUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
   const options = typeof data === 'string' ? { returnPathname: data } : data;
   const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(authkit, await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})));
+  return forwardAuthorizationCookies(
+    authkit,
+    await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})),
+  );
 }
 
 export type SwitchToOrganizationPlan = { kind: 'redirect'; to: string } | { kind: 'user'; user: UserInfo };

@@ -51,13 +51,28 @@ openssl rand -base64 24
 Create or update `src/start.ts`:
 
 ```typescript
-import { createStart } from '@tanstack/react-start';
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start';
 import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
 
+// Reject cross-site requests to server-function RPC endpoints.
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+});
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [authkitMiddleware()],
+  requestMiddleware: [csrfMiddleware, authkitMiddleware()],
 }));
 ```
+
+> **Why `createCsrfMiddleware`?** TanStack Start applies CSRF protection to server
+> functions automatically — but _only_ when your app doesn't define its own
+> `startInstance`. Registering `authkitMiddleware` means you do, which silently
+> opts you out of that default. Adding `createCsrfMiddleware` back restores it.
+> It's a pure header check (`Sec-Fetch-Site` / `Origin` / `Referer`) with no
+> tokens and no interaction with the AuthKit session cookie; list it before
+> `authkitMiddleware` so cross-site requests are rejected before any session work
+> runs. If you handle CSRF another way, omit it — Start will warn in dev, which
+> you can silence with `tanstackStart({ serverFns: { disableCsrfMiddlewareWarning: true } })`.
 
 #### 2. Create Callback Route
 
@@ -572,6 +587,11 @@ authkitMiddleware({
 **Options:**
 
 - `redirectUri` - Override the default redirect URI from `WORKOS_REDIRECT_URI`. Useful for dynamic environments like preview deployments.
+
+> **CSRF:** Registering `authkitMiddleware` in `requestMiddleware` opts your app
+> out of the CSRF middleware TanStack Start applies by default. Pair it with
+> `createCsrfMiddleware` (from `@tanstack/react-start`) to protect your
+> server-function RPC endpoints — see [step 1 of setup](#1-configure-middleware).
 
 ## TypeScript
 

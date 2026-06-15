@@ -77,7 +77,7 @@ let mockAuthContext: any = null;
 // Mock createServerFn to return testable functions
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: (_options?: any) => ({
-    inputValidator: (validator: Function) => ({
+    validator: (validator: Function) => ({
       handler: (handler: Function) => {
         const fn = async (opts?: { data?: any }) => {
           const data = opts?.data !== undefined ? validator(opts.data) : undefined;

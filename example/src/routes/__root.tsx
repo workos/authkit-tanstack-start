@@ -1,7 +1,6 @@
 import { Box, Button, Card, Container, Flex, Theme } from '@radix-ui/themes';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import appCssUrl from '../app.css?url';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
 import { AuthKitProvider, Impersonation, getAuthAction } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
@@ -80,7 +79,12 @@ function RootComponent() {
           </Container>
         </Theme>
         <Impersonation />
-        <TanStackRouterDevtools position="bottom-right" />
+        {/*
+          TanStackRouterDevtools is omitted: @tanstack/router-devtools-core (<=1.168.0)
+          reads routerState.cachedMatches, which @tanstack/router-core@1.171.13
+          (pulled in by react-router 1.170.15) no longer provides, crashing the panel.
+          Re-add once upstream devtools support the current router-core.
+        */}
       </AuthKitProvider>
     </RootDocument>
   );

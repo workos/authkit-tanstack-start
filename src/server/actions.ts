@@ -27,7 +27,7 @@ export const getAuthAction = createServerFn({ method: 'GET' }).handler(
  * Refresh authentication session. Sanitized for client use (no access token).
  */
 export const refreshAuthAction = createServerFn({ method: 'POST' })
-  .inputValidator((options?: { organizationId?: string }) => options)
+  .validator((options?: { organizationId?: string }) => options)
   .handler(async ({ data: options }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
     const { refreshAuthBody } = await import('./action-bodies.js');
     return refreshAuthBody(options);
@@ -55,7 +55,7 @@ export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handl
  * Switch to a different organization. Sanitized for client use (no access token).
  */
 export const switchToOrganizationAction = createServerFn({ method: 'POST' })
-  .inputValidator((data: { organizationId: string }) => data)
+  .validator((data: { organizationId: string }) => data)
   .handler(async ({ data }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
     const { switchToOrganizationBody } = await import('./action-bodies.js');
     return switchToOrganizationBody(data);
@@ -65,7 +65,7 @@ export const switchToOrganizationAction = createServerFn({ method: 'POST' })
  * Fetch organization details by ID.
  */
 export const getOrganizationAction = createServerFn({ method: 'GET' })
-  .inputValidator((organizationId: string) => organizationId)
+  .validator((organizationId: string) => organizationId)
   .handler(async ({ data: organizationId }): Promise<OrganizationInfo | null> => {
     const { getOrganizationBody } = await import('./action-bodies.js');
     return getOrganizationBody(organizationId);

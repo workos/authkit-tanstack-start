@@ -32,7 +32,7 @@ type SignInUrlOptions = Omit<GetAuthURLOptions, 'screenHint'>;
 
 /** Internal: Returns logout URL for client-side sign out. */
 export const getSignOutUrl = createServerFn({ method: 'POST' })
-  .inputValidator((options?: { returnTo?: string }) => options)
+  .validator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }): Promise<{ url: string | null }> => {
     const { getSignOutUrlBody } = await import('./server-fn-bodies.js');
     return getSignOutUrlBody(data);
@@ -56,7 +56,7 @@ export const getSignOutUrl = createServerFn({ method: 'POST' })
  * ```
  */
 export const signOut = createServerFn({ method: 'POST' })
-  .inputValidator((options?: { returnTo?: string }) => options)
+  .validator((options?: { returnTo?: string }) => options)
   .handler(async ({ data }) => {
     const { signOutBody } = await import('./server-fn-bodies.js');
     const plan = await signOutBody(data);
@@ -109,7 +109,7 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
  * Supports different screen hints and return paths.
  */
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
-  .inputValidator((options?: GetAuthURLOptions) => options)
+  .validator((options?: GetAuthURLOptions) => options)
   .handler(async ({ data: options }): Promise<string> => {
     const { getAuthorizationUrlBody } = await import('./server-fn-bodies.js');
     return getAuthorizationUrlBody(options);
@@ -132,7 +132,7 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | SignInUrlOptions) => data)
+  .validator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }): Promise<string> => {
     const { getSignInUrlBody } = await import('./server-fn-bodies.js');
     return getSignInUrlBody(data);
@@ -155,7 +155,7 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .inputValidator((data?: string | SignInUrlOptions) => data)
+  .validator((data?: string | SignInUrlOptions) => data)
   .handler(async ({ data }): Promise<string> => {
     const { getSignUpUrlBody } = await import('./server-fn-bodies.js');
     return getSignUpUrlBody(data);
@@ -173,7 +173,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const switchToOrganization = createServerFn({ method: 'POST' })
-  .inputValidator((data: { organizationId: string; returnTo?: string }) => data)
+  .validator((data: { organizationId: string; returnTo?: string }) => data)
   .handler(async ({ data }): Promise<UserInfo> => {
     const { switchToOrganizationBody } = await import('./server-fn-bodies.js');
     const plan = await switchToOrganizationBody(data);

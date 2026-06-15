@@ -45,7 +45,7 @@ export function createServerFunctionWrapper(handler: Function) {
 // Mock createServerFn to return a testable function
 export function mockCreateServerFn() {
   return {
-    inputValidator: (validator: Function) => ({
+    validator: (validator: Function) => ({
       handler: (handlerFn: Function) => {
         // Return a function that can be called directly in tests
         return async (opts?: { data?: any }) => {

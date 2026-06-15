@@ -51,7 +51,7 @@ vi.mock('@workos/authkit-session', () => ({
 // Mock createServerFn
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => ({
-    inputValidator: (validator: Function) => ({
+    validator: (validator: Function) => ({
       handler: (handler: Function) => {
         return async (opts?: { data?: any }) => {
           const data = opts?.data !== undefined ? validator(opts.data) : undefined;

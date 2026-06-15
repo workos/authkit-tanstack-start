@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0](https://github.com/workos/authkit-tanstack-start/compare/v0.8.6...v0.9.0) (2026-06-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* requires @tanstack/react-start >=1.168.25, where createServerFn().validator() exists. Consumers on older TanStack Start versions must upgrade.
+
+### Bug Fixes
+
+* use createServerFn().validator() instead of deprecated inputValidator ([#101](https://github.com/workos/authkit-tanstack-start/issues/101)) ([f74fb28](https://github.com/workos/authkit-tanstack-start/commit/f74fb283ed754793d2bb1f45683b87e93c9bcef1))
+
 ## [0.8.6](https://github.com/workos/authkit-tanstack-start/compare/v0.8.5...v0.8.6) (2026-06-11)
 
 

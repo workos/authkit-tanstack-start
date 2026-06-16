@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/workos/authkit-tanstack-start/compare/v0.9.0...v0.9.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* evict stale PKCE verifier cookies to prevent HTTP 431 ([#76](https://github.com/workos/authkit-tanstack-start/issues/76)) ([#104](https://github.com/workos/authkit-tanstack-start/issues/104)) ([1c77259](https://github.com/workos/authkit-tanstack-start/commit/1c7725926085d70514ec29e27eb48c51fcb22f2d))
+* lazy-import @workos/authkit-session in authkit-loader ([#93](https://github.com/workos/authkit-tanstack-start/issues/93)) ([c66a2bc](https://github.com/workos/authkit-tanstack-start/commit/c66a2bcdf3e071178e7d62efbae1644de9c8b4bb))
+
 ## [0.9.0](https://github.com/workos/authkit-tanstack-start/compare/v0.8.6...v0.9.0) (2026-06-15)
 
 

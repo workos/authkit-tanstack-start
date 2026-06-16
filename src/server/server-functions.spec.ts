@@ -11,12 +11,14 @@ const PKCE_COOKIE_NAME = getPKCECookieNameForState(SEALED_STATE_FIXTURE);
 
 const authorizationResult = (url: string) => ({
   url,
+  cookieName: PKCE_COOKIE_NAME,
   headers: {
     'Set-Cookie': `${PKCE_COOKIE_NAME}=${SEALED_STATE_FIXTURE}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600; Secure`,
   },
 });
 
 const mockAuthkit = {
+  clearPendingVerifierByName: vi.fn().mockResolvedValue({}),
   withAuth: vi.fn(),
   getWorkOS: vi.fn(() => ({
     userManagement: {
@@ -35,6 +37,7 @@ const mockAuthkit = {
 
 const mockSetPendingHeader = vi.fn();
 let mockContextAvailable = true;
+let mockRequestCookieHeader: string | null = null;
 
 vi.mock('./authkit-loader', () => ({
   getAuthkit: vi.fn(() => Promise.resolve(mockAuthkit)),
@@ -97,9 +100,13 @@ vi.mock('@tanstack/react-start', () => ({
     if (!mockContextAvailable) {
       throw new Error('TanStack context not available');
     }
+    const headers = new Headers();
+    if (mockRequestCookieHeader) {
+      headers.set('cookie', mockRequestCookieHeader);
+    }
     return {
       auth: mockAuthContext,
-      request: new Request('http://test.local'),
+      request: new Request('http://test.local', { headers }),
       __setPendingHeader: mockSetPendingHeader,
     };
   },
@@ -115,6 +122,7 @@ describe('Server Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockContextAvailable = true;
+    mockRequestCookieHeader = null;
     mockAuthContext = () => ({ user: null });
   });
 
@@ -378,6 +386,70 @@ describe('Server Functions', () => {
         organizationId: 'org_456',
         loginHint: 'newuser@example.com',
       });
+    });
+  });
+
+  describe('PKCE verifier cookie eviction (issue #76)', () => {
+    const verifierName = (state: string) => getPKCECookieNameForState(state);
+    const cookieHeaderFor = (names: string[]) => names.map((n) => `${n}=x`).join('; ');
+
+    it('does not evict while pending verifiers stay within the cap', async () => {
+      mockRequestCookieHeader = cookieHeaderFor([
+        'wos-session', // non-verifier — must be ignored by the count
+        verifierName('a'),
+        verifierName('b'),
+        verifierName('c'),
+      ]);
+
+      await serverFunctions.getSignInUrl({ data: '/dashboard' });
+
+      expect(mockAuthkit.clearPendingVerifierByName).not.toHaveBeenCalled();
+    });
+
+    it('evicts every other verifier once the new cookie tips it over the cap', async () => {
+      const others = ['a', 'b', 'c', 'd', 'e'].map(verifierName); // 5 existing + 1 new = 6 > 5
+      mockRequestCookieHeader = cookieHeaderFor(others);
+
+      await serverFunctions.getSignInUrl({ data: '/dashboard' });
+
+      expect(mockAuthkit.clearPendingVerifierByName).toHaveBeenCalledTimes(others.length);
+      const clearedNames = mockAuthkit.clearPendingVerifierByName.mock.calls.map((c: any[]) => c[1].cookieName);
+      expect(new Set(clearedNames)).toEqual(new Set(others));
+      // The cookie minted by THIS request must never be evicted.
+      expect(clearedNames).not.toContain(PKCE_COOKIE_NAME);
+    });
+
+    it('never deletes the freshly minted cookie, even when it is already on the request and over cap', async () => {
+      // keep + 5 others = 6 verifiers, over the cap → evict the others, spare `keep`.
+      const others = ['a', 'b', 'c', 'd', 'e'].map(verifierName);
+      mockRequestCookieHeader = cookieHeaderFor([PKCE_COOKIE_NAME, ...others]);
+
+      await serverFunctions.getSignInUrl({ data: '/dashboard' });
+
+      const clearedNames = mockAuthkit.clearPendingVerifierByName.mock.calls.map((c: any[]) => c[1].cookieName);
+      expect(new Set(clearedNames)).toEqual(new Set(others));
+      expect(clearedNames).not.toContain(PKCE_COOKIE_NAME);
+    });
+
+    it('also evicts on getSignUpUrl and getAuthorizationUrl', async () => {
+      mockRequestCookieHeader = cookieHeaderFor(['a', 'b', 'c', 'd', 'e'].map(verifierName));
+
+      await serverFunctions.getSignUpUrl({ data: '/welcome' });
+      expect(mockAuthkit.clearPendingVerifierByName).toHaveBeenCalledTimes(5);
+
+      mockAuthkit.clearPendingVerifierByName.mockClear();
+      await serverFunctions.getAuthorizationUrl({ data: {} });
+      expect(mockAuthkit.clearPendingVerifierByName).toHaveBeenCalledTimes(5);
+    });
+
+    it('keeps generating the URL even when eviction fails', async () => {
+      mockAuthkit.createSignIn.mockResolvedValue(authorizationResult('https://auth.workos.com/resilient'));
+      mockRequestCookieHeader = cookieHeaderFor(['a', 'b', 'c', 'd', 'e'].map(verifierName));
+      mockAuthkit.clearPendingVerifierByName.mockRejectedValueOnce(new Error('storage boom'));
+
+      const url = await serverFunctions.getSignInUrl({ data: '/dashboard' });
+
+      expect(url).toBe('https://auth.workos.com/resilient');
     });
   });
 

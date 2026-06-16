@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCookies } from './cookie-utils';
+import { parseCookies, parseCookieNames } from './cookie-utils';
 
 describe('parseCookies', () => {
   it('parses a single cookie', () => {
@@ -21,5 +21,28 @@ describe('parseCookies', () => {
 
   it('trims whitespace around each pair', () => {
     expect(parseCookies('a=1 ;   b=2')).toEqual({ a: '1', b: '2' });
+  });
+});
+
+describe('parseCookieNames', () => {
+  it('returns names only, ignoring values', () => {
+    expect(parseCookieNames('a=1; b=2; c=3')).toEqual(['a', 'b', 'c']);
+  });
+
+  it('handles values containing = signs', () => {
+    expect(parseCookieNames('token=base64==padding==')).toEqual(['token']);
+  });
+
+  it('trims whitespace around each name', () => {
+    expect(parseCookieNames('a=1 ;   b=2')).toEqual(['a', 'b']);
+  });
+
+  it('returns an empty array for an empty header', () => {
+    expect(parseCookieNames('')).toEqual([]);
+    expect(parseCookieNames('   ')).toEqual([]);
+  });
+
+  it('tolerates a valueless cookie segment', () => {
+    expect(parseCookieNames('a=1; flag; b=2')).toEqual(['a', 'flag', 'b']);
   });
 });

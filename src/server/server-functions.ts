@@ -107,6 +107,15 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
 /**
  * Get the authorization URL for WorkOS authentication.
  * Supports different screen hints and return paths.
+ *
+ * @remarks
+ * **This has a side effect.** Each call starts a new OAuth (PKCE) flow and sets
+ * a short-lived `wos-auth-verifier-*` cookie. Invoke it on a user action or from
+ * a dedicated redirect route (e.g. `/api/auth/sign-in`) — do NOT prefetch it in
+ * a route `loader`/`beforeLoad` just to render a link. Generating URLs you never
+ * navigate to piles up verifier cookies. The SDK bounds the pile-up with
+ * automatic eviction, but the right pattern is still to call this only when the
+ * user is actually about to be redirected. See issue #76.
  */
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .validator((options?: GetAuthURLOptions) => options)
@@ -130,6 +139,10 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
  * // With options
  * const url = await getSignInUrl({ data: { returnPathname: '/dashboard', state: 'custom-state' } });
  * ```
+ *
+ * @remarks
+ * Starts an OAuth flow and sets a PKCE verifier cookie — call on user action or
+ * from a redirect route, not prefetched in a loader for display. See issue #76.
  */
 export const getSignInUrl = createServerFn({ method: 'GET' })
   .validator((data?: string | SignInUrlOptions) => data)
@@ -153,6 +166,10 @@ export const getSignInUrl = createServerFn({ method: 'GET' })
  * // With options
  * const url = await getSignUpUrl({ data: { returnPathname: '/dashboard', state: 'custom-state' } });
  * ```
+ *
+ * @remarks
+ * Starts an OAuth flow and sets a PKCE verifier cookie — call on user action or
+ * from a redirect route, not prefetched in a loader for display. See issue #76.
  */
 export const getSignUpUrl = createServerFn({ method: 'GET' })
   .validator((data?: string | SignInUrlOptions) => data)

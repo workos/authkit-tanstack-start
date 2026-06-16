@@ -8,23 +8,29 @@ import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUr
 import { getAuthkit } from './authkit-loader.js';
 import type { AuthKitServerContext } from './context.js';
 import { getInternalAuthKitContextOrNull } from './context.js';
-import { parseCookies } from './cookie-utils.js';
+import { parseCookieNames } from './cookie-utils.js';
 import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
 import type { NoUserInfo, UserInfo } from './server-functions.js';
 
 type AuthorizationResult = CreateAuthorizationResult<Response>;
 
 /**
- * Forward every `Set-Cookie` (and any other header) emitted by the upstream
- * authorization-URL call through middleware's pending-header channel so the
- * PKCE verifier cookie lands on the outgoing response. Each `Set-Cookie` entry
- * is appended as its own header — never comma-joined — so multi-cookie
- * emissions survive as distinct HTTP headers.
+ * Run the full authorization-URL pipeline: resolve the AuthKit service, invoke
+ * `create` to mint the URL + its PKCE verifier cookie, forward every emitted
+ * `Set-Cookie` through middleware's pending-header channel, evict stale verifier
+ * cookies, and return the URL.
+ *
+ * `create` names which flow to start (sign-in / sign-up / generic). The three
+ * URL server-function bodies differ only in that callback, so this pipeline
+ * lives here once. Each `Set-Cookie` is appended as its own header — never
+ * comma-joined — so a multi-cookie emission survives as distinct HTTP headers.
  */
-async function forwardAuthorizationCookies(
-  authkit: AuthService<Request, Response>,
-  result: AuthorizationResult,
+async function authorizationUrl(
+  create: (authkit: AuthService<Request, Response>) => Promise<AuthorizationResult>,
 ): Promise<string> {
+  const authkit = await getAuthkit();
+  const result = await create(authkit);
+
   const ctx = getInternalAuthKitContextOrNull();
   if (!ctx?.__setPendingHeader) {
     throw new Error(
@@ -71,8 +77,7 @@ async function evictStalePendingVerifiers(
   const cookieHeader = ctx.request.headers.get('cookie');
   if (!cookieHeader) return;
 
-  const incomingNames = Object.keys(parseCookies(cookieHeader));
-  const stale = selectStalePKCEVerifierCookieNames(incomingNames, { keep: keepCookieName });
+  const stale = selectStalePKCEVerifierCookieNames(parseCookieNames(cookieHeader), { keep: keepCookieName });
   if (stale.length === 0) return;
 
   // Each delete is independent, so fire them together and isolate per-cookie
@@ -149,29 +154,26 @@ export function getAuthBody(): UserInfo | NoUserInfo {
   return getAuthFromContext();
 }
 
-export async function getAuthorizationUrlBody(options?: GetAuthURLOptions): Promise<string> {
-  const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(
-    authkit,
-    await authkit.createAuthorization(undefined, applyContextRedirectUri(options ?? {})),
+/** Normalize the sign-in/sign-up data arg: a bare string is the returnPathname. */
+function toAuthOptions(
+  data?: string | Omit<GetAuthURLOptions, 'screenHint'>,
+): Omit<GetAuthURLOptions, 'screenHint'> | undefined {
+  return typeof data === 'string' ? { returnPathname: data } : data;
+}
+
+export function getAuthorizationUrlBody(options?: GetAuthURLOptions): Promise<string> {
+  return authorizationUrl((authkit) => authkit.createAuthorization(undefined, applyContextRedirectUri(options ?? {})));
+}
+
+export function getSignInUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
+  return authorizationUrl((authkit) =>
+    authkit.createSignIn(undefined, applyContextRedirectUri(toAuthOptions(data) ?? {})),
   );
 }
 
-export async function getSignInUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
-  const options = typeof data === 'string' ? { returnPathname: data } : data;
-  const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(
-    authkit,
-    await authkit.createSignIn(undefined, applyContextRedirectUri(options ?? {})),
-  );
-}
-
-export async function getSignUpUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
-  const options = typeof data === 'string' ? { returnPathname: data } : data;
-  const authkit = await getAuthkit();
-  return forwardAuthorizationCookies(
-    authkit,
-    await authkit.createSignUp(undefined, applyContextRedirectUri(options ?? {})),
+export function getSignUpUrlBody(data?: string | Omit<GetAuthURLOptions, 'screenHint'>): Promise<string> {
+  return authorizationUrl((authkit) =>
+    authkit.createSignUp(undefined, applyContextRedirectUri(toAuthOptions(data) ?? {})),
   );
 }
 

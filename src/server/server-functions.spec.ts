@@ -419,13 +419,16 @@ describe('Server Functions', () => {
       expect(clearedNames).not.toContain(PKCE_COOKIE_NAME);
     });
 
-    it('does not delete the freshly minted cookie even when it is already on the request', async () => {
-      // keep + 4 others = 5 verifiers, within the cap → no eviction.
-      mockRequestCookieHeader = cookieHeaderFor([PKCE_COOKIE_NAME, ...['a', 'b', 'c', 'd'].map(verifierName)]);
+    it('never deletes the freshly minted cookie, even when it is already on the request and over cap', async () => {
+      // keep + 5 others = 6 verifiers, over the cap → evict the others, spare `keep`.
+      const others = ['a', 'b', 'c', 'd', 'e'].map(verifierName);
+      mockRequestCookieHeader = cookieHeaderFor([PKCE_COOKIE_NAME, ...others]);
 
       await serverFunctions.getSignInUrl({ data: '/dashboard' });
 
-      expect(mockAuthkit.clearPendingVerifierByName).not.toHaveBeenCalled();
+      const clearedNames = mockAuthkit.clearPendingVerifierByName.mock.calls.map((c: any[]) => c[1].cookieName);
+      expect(new Set(clearedNames)).toEqual(new Set(others));
+      expect(clearedNames).not.toContain(PKCE_COOKIE_NAME);
     });
 
     it('also evicts on getSignUpUrl and getAuthorizationUrl', async () => {

@@ -6,6 +6,7 @@ import type {
 import { selectStalePKCEVerifierCookieNames } from '@workos/authkit-session';
 import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
+import type { AuthKitServerContext } from './context.js';
 import { getInternalAuthKitContextOrNull } from './context.js';
 import { parseCookies } from './cookie-utils.js';
 import { emitHeadersFrom, forEachHeaderBagEntry } from './headers-bag.js';
@@ -40,7 +41,7 @@ async function forwardAuthorizationCookies(
     );
   }
 
-  await evictStalePendingVerifiers(authkit, result.cookieName);
+  await evictStalePendingVerifiers(ctx, authkit, result.cookieName);
 
   return result.url;
 }
@@ -63,12 +64,10 @@ async function forwardAuthorizationCookies(
  * new cookie itself uses.
  */
 async function evictStalePendingVerifiers(
+  ctx: AuthKitServerContext,
   authkit: AuthService<Request, Response>,
   keepCookieName: string,
 ): Promise<void> {
-  const ctx = getInternalAuthKitContextOrNull();
-  if (!ctx) return;
-
   const cookieHeader = ctx.request.headers.get('cookie');
   if (!cookieHeader) return;
 
@@ -76,14 +75,15 @@ async function evictStalePendingVerifiers(
   const stale = selectStalePKCEVerifierCookieNames(incomingNames, { keep: keepCookieName });
   if (stale.length === 0) return;
 
-  const redirectUri = getRedirectUriFromContext();
   // Each delete is independent, so fire them together and isolate per-cookie
   // failures with allSettled — a rejected clear just leaves an orphan to expire
   // on its TTL and must never block URL generation. (In this adapter each clear
   // only appends a Set-Cookie to the pending-header channel, so this is about
   // error isolation more than latency.)
   await Promise.allSettled(
-    stale.map((cookieName) => authkit.clearPendingVerifierByName(undefined, { cookieName, redirectUri })),
+    stale.map((cookieName) =>
+      authkit.clearPendingVerifierByName(undefined, { cookieName, redirectUri: ctx.redirectUri }),
+    ),
   );
 }
 

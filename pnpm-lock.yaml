@@ -8,9 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@workos-inc/node':
+        specifier: '>=10.4.0'
+        version: 10.4.0
       '@workos/authkit-session':
         specifier: ^0.6.0
-        version: 0.6.0(@workos-inc/node@8.13.0)(typescript@5.9.3)
+        version: 0.6.0(@workos-inc/node@10.4.0)(typescript@5.9.3)
     devDependencies:
       '@tanstack/react-router':
         specifier: ^1.170.15
@@ -2132,9 +2135,9 @@ packages:
   '@vitest/utils@4.0.15':
     resolution: {integrity: sha512-HXjPW2w5dxhTD0dLwtYHDnelK3j8sR8cWIaLxr22evTyY6q8pRCjZSmhRWVjBaOVXChQd6AwMzi9pucorXCPZA==}
 
-  '@workos-inc/node@8.13.0':
-    resolution: {integrity: sha512-NgQKHpwh8AbT4KvAsW91Y+4f4jja2IvFPQ5atcy5NUxUMVRgXzRFEee3erawfXrTmiCVqJjd9PljHySKBXmHKQ==}
-    engines: {node: '>=20.15.0'}
+  '@workos-inc/node@10.4.0':
+    resolution: {integrity: sha512-mrrjFYQsYGbY/rGLqUN9IIwzoCa3aIg9gXViIRpzfXkH2mozJ1NBcxSivN3SpqLgoGDuyp3Wg3Mg5UgTJU4FYQ==}
+    engines: {node: '>=22.11.0'}
 
   '@workos/authkit-session@0.6.0':
     resolution: {integrity: sha512-AaDt34h4XF5BTF5ShN+W+8OOHxj+n0KmkX+e89OVNaeZJKwqao0b/S3m3BiAylNHdZGM95tsvRUKeoEXp5qERQ==}
@@ -2317,9 +2320,6 @@ packages:
 
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
-
-  eventemitter3@5.0.4:
-    resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
@@ -4998,13 +4998,11 @@ snapshots:
       '@vitest/pretty-format': 4.0.15
       tinyrainbow: 3.0.3
 
-  '@workos-inc/node@8.13.0':
-    dependencies:
-      eventemitter3: 5.0.4
+  '@workos-inc/node@10.4.0': {}
 
-  '@workos/authkit-session@0.6.0(@workos-inc/node@8.13.0)(typescript@5.9.3)':
+  '@workos/authkit-session@0.6.0(@workos-inc/node@10.4.0)(typescript@5.9.3)':
     dependencies:
-      '@workos-inc/node': 8.13.0
+      '@workos-inc/node': 10.4.0
       iron-webcrypto: 2.0.0
       jose: 6.1.3
       valibot: 1.3.1(typescript@5.9.3)
@@ -5193,8 +5191,6 @@ snapshots:
   estree-walker@3.0.3:
     dependencies:
       '@types/estree': 1.0.8
-
-  eventemitter3@5.0.4: {}
 
   expect-type@1.3.0: {}
 

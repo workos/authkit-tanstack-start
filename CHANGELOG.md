@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/workos/authkit-tanstack-start/compare/v0.9.1...v0.10.0) (2026-06-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* requires @workos-inc/node >=10.4.0 and Node >=22.11.
+
+### Bug Fixes
+
+* require @workos-inc/node &gt;=10.4.0 (eventemitter3 Vite dev crash [#106](https://github.com/workos/authkit-tanstack-start/issues/106)) ([#107](https://github.com/workos/authkit-tanstack-start/issues/107)) ([424a712](https://github.com/workos/authkit-tanstack-start/commit/424a71277e466f3c40e2bf8eabaa52fe65608244))
+* scope getOrganization lookup to the authenticated session ([#108](https://github.com/workos/authkit-tanstack-start/issues/108)) ([61716ef](https://github.com/workos/authkit-tanstack-start/commit/61716ef3dec92119284f38920c2259e89a5cbe02))
+
 ## [0.9.1](https://github.com/workos/authkit-tanstack-start/compare/v0.9.0...v0.9.1) (2026-06-16)
 
 

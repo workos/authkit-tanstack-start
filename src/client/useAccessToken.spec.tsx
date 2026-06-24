@@ -23,6 +23,7 @@ describe('useAccessToken', () => {
   const mockUser: User = {
     id: 'user_123',
     email: 'test@example.com',
+    name: 'Test User',
     firstName: 'Test',
     lastName: 'User',
     emailVerified: true,

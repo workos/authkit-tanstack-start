@@ -69,6 +69,15 @@ export async function switchToOrganizationBody(data: {
 
 export async function getOrganizationBody(organizationId: string): Promise<OrganizationInfo | null> {
   try {
+    // Authorization: only resolve the organization the caller is currently
+    // authenticated within. The WorkOS client uses the app's API key, which can
+    // read any organization in the environment, so without this check any caller
+    // could fetch arbitrary organizations by ID (authorization bypass / IDOR).
+    const auth = getRawAuthFromContext();
+    if (!auth.user || auth.claims?.org_id !== organizationId) {
+      return null;
+    }
+
     const { getWorkOS } = await import('@workos/authkit-session');
     const workos = getWorkOS();
     const org = await workos.organizations.getOrganization(organizationId);

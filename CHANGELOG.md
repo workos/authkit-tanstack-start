@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/workos/authkit-tanstack-start/compare/v0.10.0...v0.10.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* update User test mocks for @workos-inc/node 10.4.0 (unblock publish) ([#110](https://github.com/workos/authkit-tanstack-start/issues/110)) ([4d91303](https://github.com/workos/authkit-tanstack-start/commit/4d913039ff207cb4bc6c3099faab6d2b6a51b275))
+
 ## [0.10.0](https://github.com/workos/authkit-tanstack-start/compare/v0.9.1...v0.10.0) (2026-06-24)
 
 

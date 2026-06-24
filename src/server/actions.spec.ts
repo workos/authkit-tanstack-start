@@ -294,7 +294,11 @@ describe('Actions', () => {
   });
 
   describe('getOrganizationAction', () => {
-    it('returns organization info on success', async () => {
+    it('returns organization info for the current session organization', async () => {
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' }, claims: { org_id: 'org_123' } }),
+        request: new Request('http://test.local'),
+      };
       mockGetOrganization.mockResolvedValue({ id: 'org_123', name: 'Test Org' });
 
       const result = await getOrganizationAction({ data: 'org_123' });
@@ -303,7 +307,35 @@ describe('Actions', () => {
       expect(result).toEqual({ id: 'org_123', name: 'Test Org' });
     });
 
+    it('denies fetching an organization the caller is not authenticated within', async () => {
+      // Session is scoped to org_123; the caller requests a different org.
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' }, claims: { org_id: 'org_123' } }),
+        request: new Request('http://test.local'),
+      };
+      mockGetOrganization.mockResolvedValue({ id: 'org_456', name: 'Victim Org' });
+
+      const result = await getOrganizationAction({ data: 'org_456' });
+
+      expect(result).toBeNull();
+      expect(mockGetOrganization).not.toHaveBeenCalled();
+    });
+
+    it('returns null when there is no authenticated session', async () => {
+      mockAuthContext = null;
+      mockGetOrganization.mockResolvedValue({ id: 'org_123', name: 'Test Org' });
+
+      const result = await getOrganizationAction({ data: 'org_123' });
+
+      expect(result).toBeNull();
+      expect(mockGetOrganization).not.toHaveBeenCalled();
+    });
+
     it('returns null when organization is not found', async () => {
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' }, claims: { org_id: 'bad_org' } }),
+        request: new Request('http://test.local'),
+      };
       mockGetOrganization.mockRejectedValue(new Error('Not found'));
 
       const result = await getOrganizationAction({ data: 'bad_org' });

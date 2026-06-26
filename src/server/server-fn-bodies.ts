@@ -4,6 +4,7 @@ import type {
   GetAuthorizationUrlOptions as GetAuthURLOptions,
 } from '@workos/authkit-session';
 import { selectStalePKCEVerifierCookieNames } from '@workos/authkit-session';
+import { evaluateRecentAuth } from '../internal/recent-auth.js';
 import { getRawAuthFromContext, mapAuthToBaseInfo, refreshSession, getRedirectUriFromContext } from './auth-helpers.js';
 import { getAuthkit } from './authkit-loader.js';
 import type { AuthKitServerContext } from './context.js';
@@ -152,6 +153,12 @@ export async function signOutBody(data?: { returnTo?: string }): Promise<SignOut
 
 export function getAuthBody(): UserInfo | NoUserInfo {
   return getAuthFromContext();
+}
+
+export function checkRecentAuthBody({ maxAge }: { maxAge: number }) {
+  const auth = getRawAuthFromContext();
+  const authTime = auth.user ? auth.claims?.auth_time : undefined;
+  return evaluateRecentAuth({ authTime, maxAgeSeconds: maxAge, nowSeconds: Math.floor(Date.now() / 1000) });
 }
 
 /** Normalize the sign-in/sign-up data arg: a bare string is the returnPathname. */

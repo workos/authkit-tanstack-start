@@ -5,6 +5,7 @@ describe('SDK exports', () => {
   it('exports expected functions', () => {
     // Server functions
     expect(exports.getAuth).toBeDefined();
+    expect(exports.checkRecentAuth).toBeDefined();
     expect(exports.signOut).toBeDefined();
     expect(exports.switchToOrganization).toBeDefined();
     expect(exports.getAuthorizationUrl).toBeDefined();

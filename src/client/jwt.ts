@@ -36,11 +36,11 @@ export interface JWTPayload {
    */
   aud?: string | string[];
   /**
-   * Expiration time of the JWT, represented as a Unix timestamp
+   * Expiration time of the JWT, represented as epoch seconds
    */
   exp: number;
   /**
-   * Issued at time of the JWT, represented as a Unix timestamp
+   * Issued at time of the JWT, represented as epoch seconds
    */
   iat: number;
   /**
@@ -67,6 +67,11 @@ export interface JWTPayload {
    * Permissions granted to the user associated with the JWT
    */
   permissions?: string[];
+
+  /**
+   * Time of user authentication, represented as epoch seconds
+   */
+  auth_time?: number;
 }
 
 export type TokenClaims<T> = Partial<JWTPayload & T>;

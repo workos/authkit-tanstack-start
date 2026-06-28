@@ -105,6 +105,36 @@ export const getAuth = createServerFn({ method: 'GET' }).handler(async (): Promi
 });
 
 /**
+ * Check how recently the current user authenticated, using the `auth_time`
+ * claim on the access token. Returns data only — it never redirects — so it is
+ * safe to call as the enforcement step inside a sensitive server action or in a
+ * loader where you decide what to do.
+ *
+ * Fails closed: a session with no usable `auth_time` (or no user) is reported
+ * as `isStale: true`.
+ *
+ * @example
+ * ```typescript
+ * // Guard a sensitive server action
+ * const { isStale } = await checkRecentAuth({ data: { maxAge: 300 } });
+ * if (isStale) {
+ *   return { status: 'reauth_required' };
+ * }
+ * ```
+ *
+ * @remarks
+ * To send the user through re-authentication, redirect to your sign-in route
+ * with `maxAge` (e.g. `getSignInUrl({ data: { maxAge: 300 } })`), which forwards
+ * OIDC `max_age` so the IdP forces a reauth when most recent auth is older.
+ */
+export const checkRecentAuth = createServerFn({ method: 'GET' })
+  .validator((options: { maxAge: number }) => options)
+  .handler(async ({ data }) => {
+    const { checkRecentAuthBody } = await import('./server-fn-bodies.js');
+    return checkRecentAuthBody(data);
+  });
+
+/**
  * Get the authorization URL for WorkOS authentication.
  * Supports different screen hints and return paths.
  *

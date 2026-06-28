@@ -3,6 +3,7 @@ export {
   type NoUserInfo,
   type GetAuthURLOptions,
   getAuth,
+  checkRecentAuth,
   signOut,
   switchToOrganization,
   getAuthorizationUrl,

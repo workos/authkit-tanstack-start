@@ -1,78 +1,13 @@
 {
   "name": "@workos/authkit-tanstack-react-start",
-  "version": "0.10.1",
   "description": "The WorkOS library for TanStack React Start provides convenient helpers for authentication and session management using WorkOS & AuthKit with TanStack React Start.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./client": {
-      "import": "./dist/client/index.js",
-      "types": "./dist/client/index.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md"
-  ],
-  "scripts": {
-    "clean": "rm -rf dist",
-    "dev": "tsc --watch",
-    "prebuild": "npm run clean",
-    "build": "tsc -p tsconfig.build.json",
-    "build:check": "scripts/check-bundle-leak.sh",
-    "prepublishOnly": "npm run build && npm run format:check && npm run lint && npm run typecheck && npm test && (cd example && pnpm build) && npm run build:check",
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
-  },
-  "keywords": [
-    "workos",
-    "authkit",
-    "authentication",
-    "auth",
-    "tanstack",
-    "tanstack-start",
-    "react-start",
-    "react",
-    "session",
-    "oauth",
-    "sso"
-  ],
+  "version": "0.10.1",
   "author": "WorkOS",
-  "license": "MIT",
-  "sideEffects": false,
-  "engines": {
-    "node": ">=22.11.0"
-  },
-  "homepage": "https://github.com/workos/authkit-tanstack-start#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/workos/authkit-tanstack-start.git"
-  },
   "bugs": {
     "url": "https://github.com/workos/authkit-tanstack-start/issues"
   },
   "dependencies": {
-    "@workos/authkit-session": "^0.6.0"
-  },
-  "peerDependencies": {
-    "@tanstack/react-router": ">=1.0.0",
-    "@tanstack/react-start": ">=1.168.25",
-    "@workos-inc/node": ">=10.4.0",
-    "react": "^18.0 || ^19.0",
-    "react-dom": "^18.0 || ^19.0"
+    "@workos/authkit-session": "^0.7.0"
   },
   "devDependencies": {
     "@tanstack/react-router": "^1.170.15",
@@ -86,6 +21,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitest/coverage-v8": "4.0.15",
     "@vitest/ui": "^4.0.15",
+    "@workos-inc/node": "^10.7.0",
     "happy-dom": "^20.0.11",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
@@ -95,10 +31,75 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   },
+  "engines": {
+    "node": ">=22.11.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "homepage": "https://github.com/workos/authkit-tanstack-start#readme",
+  "keywords": [
+    "auth",
+    "authentication",
+    "authkit",
+    "oauth",
+    "react",
+    "react-start",
+    "session",
+    "sso",
+    "tanstack",
+    "tanstack-start",
+    "workos"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "peerDependencies": {
+    "@tanstack/react-router": ">=1.0.0",
+    "@tanstack/react-start": ">=1.168.25",
+    "@workos-inc/node": "^10.7.0",
+    "react": "^18.0 || ^19.0",
+    "react-dom": "^18.0 || ^19.0"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "esbuild"
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/workos/authkit-tanstack-start.git"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:check": "scripts/check-bundle-leak.sh",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build && npm run format:check && npm run lint && npm run typecheck && npm test && (cd example && pnpm build) && npm run build:check",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts"
 }

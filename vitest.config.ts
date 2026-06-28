@@ -9,7 +9,7 @@ export default defineConfig({
           name: 'server',
           globals: true,
           environment: 'node',
-          include: ['src/server/**/*.spec.{ts,tsx}', 'tests/**/*.spec.{ts,tsx}'],
+          include: ['src/internal/**/*.spec.{ts,tsx}', 'src/server/**/*.spec.{ts,tsx}', 'tests/**/*.spec.{ts,tsx}'],
           setupFiles: ['./tests/setup-server.ts'],
         },
       },

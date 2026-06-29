@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/workos/authkit-tanstack-start/compare/v0.10.1...v0.11.0) (2026-06-28)
+
+
+### Features
+
+* add recent-auth checking (checkRecentAuth + useRecentAuth) ([#112](https://github.com/workos/authkit-tanstack-start/issues/112)) ([98a3b01](https://github.com/workos/authkit-tanstack-start/commit/98a3b01d6e4d7e242f3da17f2178fa6b8304b553))
+
 ## [0.10.1](https://github.com/workos/authkit-tanstack-start/compare/v0.10.0...v0.10.1) (2026-06-24)
 
 

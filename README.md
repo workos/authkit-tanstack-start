@@ -3,7 +3,7 @@
 Authentication and session management for TanStack Start applications using WorkOS AuthKit.
 
 > [!NOTE]
-> This library is designed for TanStack Start v1.0+. TanStack Start is currently in beta - expect some API changes as the framework evolves.
+> This library is designed for TanStack Start v1.168.25+. TanStack Start is currently in beta - expect some API changes as the framework evolves.
 
 ## Installation
 
@@ -841,10 +841,10 @@ pnpm dev
 
 ## Framework Compatibility
 
-- **TanStack Start:** v1.132.0+
+- **TanStack Start:** v1.168.25+
 - **TanStack Router:** v1.132.0+
 - **React:** 18.0+
-- **Node.js:** 18+
+- **Node.js:** 22.11.0+
 
 ## Related
 

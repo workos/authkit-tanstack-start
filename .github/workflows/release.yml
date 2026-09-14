@@ -3,6 +3,13 @@ name: Release
 on:
   workflow_dispatch:
   workflow_call:
+    secrets:
+      PUBLIC_SOCKET_FIREWALL_TOKEN:
+        description: >-
+          Socket Firewall auth token used to route dependency installs through
+          the WorkOS Socket Firewall. The caller passes
+          secrets.PUBLIC_SOCKET_FIREWALL_TOKEN explicitly.
+        required: true
 
 defaults:
   run:
@@ -17,6 +24,15 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # Activate now so the pnpm manager bootstrap is also routed through
+      # Socket Firewall. setup-node below may rewrite npmrc for publishing, so
+      # the registry config is refreshed again before the project install.
+      - name: Enable Socket Firewall
+        uses: workos/setup-socket-firewall@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
+        with:
+          token: ${{ secrets.PUBLIC_SOCKET_FIREWALL_TOKEN }}
+
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 10
@@ -26,9 +42,21 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
+      # Re-apply after setup-node writes the npm registry auth placeholder,
+      # then keep Socket Firewall active through the project install below.
+      - name: Refresh Socket Firewall registry
+        uses: workos/setup-socket-firewall@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
+        with:
+          token: ${{ secrets.PUBLIC_SOCKET_FIREWALL_TOKEN }}
+
       - name: Install Dependencies
         run: |
           pnpm install
+
+      # Restore public npm registry access before build and publish. No
+      # dependency download may occur after this step.
+      - name: Disable Socket Firewall
+        uses: workos/setup-socket-firewall/teardown@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
 
       - name: Build project
         run: |

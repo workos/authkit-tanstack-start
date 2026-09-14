@@ -93,9 +93,9 @@ export const Route = createFileRoute('/api/auth/callback')({
 
 Make sure this matches your `WORKOS_REDIRECT_URI` environment variable.
 
-#### 3. Create Sign-In URL
+#### 3. Create Initiate Login URI
 
-Create a route that initiates the AuthKit sign-in flow. This route is used as the **Sign-in URL** (also known as `initiate_login_uri`) in your WorkOS dashboard settings.
+Create a route that initiates the AuthKit sign-in flow. This route is used as the **Initiate login URI** (`initiate_login_uri`) for your application in the WorkOS dashboard.
 
 Create `src/routes/api/auth/sign-in.tsx`:
 
@@ -119,10 +119,10 @@ export const Route = createFileRoute('/api/auth/sign-in')({
 });
 ```
 
-In the [WorkOS dashboard Redirects page](https://dashboard.workos.com/redirects), set the **Sign-in URL** to match this route (e.g., `http://localhost:3000/api/auth/sign-in`).
+In the [WorkOS dashboard](https://dashboard.workos.com/redirects), open your application's **Redirects** tab and set the **Initiate login URI** to match this route (e.g., `http://localhost:3000/api/auth/sign-in`).
 
 > [!IMPORTANT]
-> The Sign-in URL is required for features like [impersonation](https://workos.com/docs/user-management/impersonation) to work correctly. Without it, WorkOS-initiated flows (such as impersonating a user from the dashboard) will fail because they cannot complete the PKCE/CSRF verification that this library enforces on every callback.
+> The Initiate login URI is required for features like [impersonation](https://workos.com/docs/user-management/impersonation) to work correctly. Without it, WorkOS-initiated flows (such as impersonating a user from the dashboard) will fail because they cannot complete the PKCE/CSRF verification that this library enforces on every callback.
 
 #### 4. Add Provider (Optional - only needed for client hooks)
 
@@ -149,10 +149,10 @@ If you're only using server-side authentication (`getAuth()` in loaders), you ca
 
 ### WorkOS Dashboard Configuration
 
-Open the [Redirects page](https://dashboard.workos.com/redirects) in the WorkOS dashboard and configure:
+Open your application's [Redirects tab](https://dashboard.workos.com/redirects) in the WorkOS dashboard and configure:
 
 1. **Redirect URIs** — add your callback URL: `http://localhost:3000/api/auth/callback`
-2. **Sign-in URL** — set to the route from step 3 above: `http://localhost:3000/api/auth/sign-in`. Required for WorkOS-initiated flows like dashboard impersonation.
+2. **Initiate login URI** — set to the route from step 3 above: `http://localhost:3000/api/auth/sign-in`. Required for WorkOS-initiated flows like dashboard impersonation.
 3. **Sign-out redirect** — where to send users after sign-out. If unset, WorkOS falls back to the **App homepage URL**; if neither is set, WorkOS shows an error page.
 
 ## Usage
@@ -661,7 +661,7 @@ function ProfilePage() {
 
 ### Sign In Flow
 
-Link to the Sign-in URL you created in setup step 3. The endpoint handles generating the AuthKit URL and setting the PKCE cookie.
+Link to the Initiate login URI route you created in setup step 3. The endpoint handles generating the AuthKit URL and setting the PKCE cookie.
 
 ```typescript
 export const Route = createFileRoute('/')({
@@ -763,7 +763,7 @@ function MyClientComponent() {
 
 This error occurs when WorkOS-initiated flows (like dashboard impersonation) redirect directly to your callback URL without going through your application's sign-in flow. Because this library enforces PKCE/CSRF verification on every callback, the request is rejected when the required `state` parameter is missing.
 
-**Fix:** Configure a [Sign-in URL](#3-create-sign-in-url) in your [WorkOS dashboard](https://dashboard.workos.com/redirects) so impersonation flows route through your app first, letting PKCE/state be set up before redirecting to WorkOS.
+**Fix:** Configure an [Initiate login URI](#3-create-initiate-login-uri) in your [WorkOS dashboard](https://dashboard.workos.com/redirects) so impersonation flows route through your app first, letting PKCE/state be set up before redirecting to WorkOS.
 
 ### "AuthKit middleware is not configured"
 

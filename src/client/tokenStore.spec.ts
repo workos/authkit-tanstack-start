@@ -350,10 +350,13 @@ describe('TokenStore', () => {
       };
       const refreshedToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(refreshedPayload))}.mock-signature`;
 
-      document.cookie = `workos-access-token=${encodeURIComponent(initialToken)}`;
+      // Seed the initial token through the session-bound server RPC (the only
+      // legitimate token source) rather than a client-readable cookie.
+      vi.mocked(getAccessTokenAction).mockResolvedValue(initialToken);
       vi.mocked(refreshAccessTokenAction).mockResolvedValue(refreshedToken);
 
       const localStore = new TokenStore();
+      await localStore.getAccessTokenSilently();
       expect(refreshAccessTokenAction).not.toHaveBeenCalled();
 
       // Advance past the originally scheduled fire time. If the schedule buffer
@@ -362,6 +365,47 @@ describe('TokenStore', () => {
       await vi.advanceTimersByTimeAsync(300_000);
 
       expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      localStore.reset();
+    });
+  });
+
+  describe('does not trust client-readable cookies (SEC-1348)', () => {
+    afterEach(() => {
+      document.cookie
+        .split(';')
+        .map((c) => c.split('=')[0].trim())
+        .filter(Boolean)
+        .forEach((name) => {
+          document.cookie = `${name}=; Path=/; Max-Age=0`;
+          document.cookie = `${name}=; Max-Age=0`;
+        });
+    });
+
+    it('ignores a planted workos-access-token cookie and uses the session-bound RPC instead', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const makeToken = (sub: string) =>
+        `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(
+          JSON.stringify({ sub, sid: `session_${sub}`, iat: now, exp: now + 3600 }),
+        )}.mock-signature`;
+
+      const victimToken = makeToken('victim');
+      const attackerToken = makeToken('attacker');
+
+      // Attacker plants their own token via a cookie-write primitive.
+      document.cookie = `workos-access-token=${encodeURIComponent(attackerToken)}; Path=/`;
+
+      // The legitimate, session-bound token source returns the victim's token.
+      vi.mocked(getAccessTokenAction).mockResolvedValue(victimToken);
+      vi.mocked(refreshAccessTokenAction).mockResolvedValue(victimToken);
+
+      const localStore = new TokenStore();
+      // Construction must not adopt the cookie.
+      expect(localStore.getSnapshot().token).toBeUndefined();
+
+      const served = await localStore.getAccessToken();
+      expect(served).toBe(victimToken);
+      expect(served).not.toBe(attackerToken);
 
       localStore.reset();
     });

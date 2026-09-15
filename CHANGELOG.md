@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/workos/authkit-tanstack-start/compare/v0.11.0...v0.11.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* source client access tokens from the session ([#115](https://github.com/workos/authkit-tanstack-start/issues/115)) ([2bb84c2](https://github.com/workos/authkit-tanstack-start/commit/2bb84c202b2556b62895426e725dcc23679eacfb))
+
 ## [0.11.0](https://github.com/workos/authkit-tanstack-start/compare/v0.10.1...v0.11.0) (2026-06-28)
 
 

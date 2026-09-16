@@ -13,7 +13,6 @@ const SHORT_TOKEN_EXPIRY_BUFFER_SECONDS = 30;
 const MIN_REFRESH_DELAY_SECONDS = 15;
 const MAX_REFRESH_DELAY_SECONDS = 24 * 60 * 60;
 const RETRY_DELAY_SECONDS = 300;
-const jwtCookieName = 'workos-access-token';
 
 function getExpiryBuffer(totalTokenLifetime: number): number {
   return totalTokenLifetime <= SHORT_TOKEN_LIFETIME_SECONDS
@@ -26,9 +25,8 @@ export class TokenStore {
   private serverSnapshot: TokenState;
 
   constructor() {
-    const initialToken = typeof window !== 'undefined' ? this.getInitialTokenFromCookie() : undefined;
     this.state = {
-      token: initialToken,
+      token: undefined,
       loading: false,
       error: null,
     };
@@ -38,20 +36,11 @@ export class TokenStore {
       loading: false,
       error: null,
     };
-
-    if (initialToken) {
-      this.fastCookieConsumed = true;
-      const tokenData = this.parseToken(initialToken);
-      if (tokenData) {
-        this.scheduleRefresh(tokenData);
-      }
-    }
   }
 
   private listeners = new Set<() => void>();
   private refreshPromise: Promise<string | undefined> | null = null;
   private refreshTimeout: ReturnType<typeof setTimeout> | undefined;
-  private fastCookieConsumed = false;
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -108,79 +97,6 @@ export class TokenStore {
     return Math.min(Math.max(idealDelay, MIN_REFRESH_DELAY_SECONDS * 1000), MAX_REFRESH_DELAY_SECONDS * 1000);
   }
 
-  private deleteCookie() {
-    const isSecure = window.location.protocol === 'https:';
-
-    const deletionString = isSecure
-      ? `${jwtCookieName}=; SameSite=Lax; Max-Age=0; Secure`
-      : `${jwtCookieName}=; SameSite=Lax; Max-Age=0`;
-
-    document.cookie = deletionString;
-  }
-
-  private getInitialTokenFromCookie(): string | undefined {
-    if (typeof document === 'undefined' || typeof document.cookie === 'undefined') {
-      return;
-    }
-
-    const cookies = document.cookie.split(';').reduce(
-      (acc, cookie) => {
-        const [name, ...valueParts] = cookie.trim().split('=');
-        if (name && valueParts.length > 0) {
-          const value = valueParts.join('=');
-          acc[name.trim()] = decodeURIComponent(value);
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
-
-    const token = cookies[jwtCookieName];
-    if (!token) {
-      return;
-    }
-
-    this.deleteCookie();
-
-    return token;
-  }
-
-  private consumeFastCookie(): string | undefined {
-    if (this.fastCookieConsumed) {
-      return;
-    }
-
-    if (typeof document === 'undefined' || typeof document.cookie === 'undefined') {
-      return;
-    }
-
-    const cookies = document.cookie.split(';').reduce(
-      (acc, cookie) => {
-        const [name, ...valueParts] = cookie.trim().split('=');
-        if (name && valueParts.length > 0) {
-          const value = valueParts.join('=');
-          acc[name.trim()] = decodeURIComponent(value);
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
-
-    const newToken = cookies[jwtCookieName];
-    if (!newToken) {
-      this.fastCookieConsumed = true;
-      return;
-    }
-
-    this.fastCookieConsumed = true;
-
-    this.deleteCookie();
-
-    if (newToken !== this.state.token) {
-      return newToken;
-    }
-  }
-
   parseToken(token: string | undefined) {
     if (!token) return null;
 
@@ -223,13 +139,6 @@ export class TokenStore {
   }
 
   async getAccessToken(): Promise<string | undefined> {
-    const fastToken = this.consumeFastCookie();
-
-    if (fastToken) {
-      this.setState({ token: fastToken, loading: false, error: null });
-      return fastToken;
-    }
-
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -244,19 +153,6 @@ export class TokenStore {
   }
 
   async getAccessTokenSilently(): Promise<string | undefined> {
-    const fastToken = this.consumeFastCookie();
-
-    if (fastToken) {
-      this.setState({ token: fastToken, loading: false, error: null });
-
-      const tokenData = this.parseToken(fastToken);
-      if (tokenData) {
-        this.scheduleRefresh(tokenData);
-      }
-
-      return fastToken;
-    }
-
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -355,7 +251,6 @@ export class TokenStore {
   reset() {
     this.state = { token: undefined, loading: false, error: null };
     this.refreshPromise = null;
-    this.fastCookieConsumed = false;
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;

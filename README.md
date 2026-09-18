@@ -844,7 +844,7 @@ pnpm dev
 - **TanStack Start:** v1.168.25+
 - **TanStack Router:** v1.132.0+
 - **React:** 18.0+
-- **Node.js:** 22.11.0+
+- **Node.js:** 22.12.0+
 
 ## Related
 

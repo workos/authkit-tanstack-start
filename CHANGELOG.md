@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/workos/authkit-tanstack-start/compare/v0.11.1...v0.11.2) (2026-09-21)
+
+
+### Bug Fixes
+
+* align Node engine with TanStack Start minimum ([#121](https://github.com/workos/authkit-tanstack-start/issues/121)) ([c19b44f](https://github.com/workos/authkit-tanstack-start/commit/c19b44fe8718f389105994bdd7095fd840054f43))
+
 ## [0.11.1](https://github.com/workos/authkit-tanstack-start/compare/v0.11.0...v0.11.1) (2026-09-15)
 
 

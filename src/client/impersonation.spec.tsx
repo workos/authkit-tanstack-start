@@ -15,6 +15,13 @@ vi.mock('../server/actions', () => ({
 
 const mockSignOut = vi.fn();
 
+// Node's process (the client project has no @types/node); used to observe unhandled rejections.
+const nodeProcess = (
+  globalThis as unknown as {
+    process: { on(event: string, fn: () => void): void; off(event: string, fn: () => void): void };
+  }
+).process;
+
 function mockAuth(overrides: Record<string, unknown> = {}) {
   vi.mocked(useAuth).mockReturnValue({
     impersonator: { email: 'admin@example.com', reason: 'testing' },
@@ -67,7 +74,7 @@ describe('Impersonation', () => {
 
   it('shows no organization name, logs, and leaves no unhandled rejection when the action rejects', async () => {
     const unhandled = vi.fn();
-    process.on('unhandledRejection', unhandled);
+    nodeProcess.on('unhandledRejection', unhandled);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const error = new Error(
       'getOrganizationAction requires a WorkOS API key; set WORKOS_API_KEY. Public-client (keyless) mode supports sign-in only.',
@@ -89,7 +96,7 @@ describe('Impersonation', () => {
       expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('impersonated organization'), error);
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
-      process.off('unhandledRejection', unhandled);
+      nodeProcess.off('unhandledRejection', unhandled);
       consoleError.mockRestore();
     }
   });

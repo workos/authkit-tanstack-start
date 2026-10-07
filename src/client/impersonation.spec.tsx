@@ -101,6 +101,63 @@ describe('Impersonation', () => {
     }
   });
 
+  describe('when the organization changes while a lookup is pending', () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      let reject!: (error: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    async function switchOrganizations() {
+      const first = deferred<{ id: string; name: string } | null>();
+      vi.mocked(getOrganizationAction)
+        .mockReturnValueOnce(first.promise)
+        .mockResolvedValueOnce({ id: 'org_456', name: 'New Org' });
+
+      mockAuth({ organizationId: 'org_123' });
+      const { rerender } = await act(async () => render(<Impersonation />));
+      await act(async () => {
+        mockAuth({ organizationId: 'org_456' });
+        rerender(<Impersonation />);
+      });
+      expect(await screen.findByText('New Org')).toBeInTheDocument();
+      return first;
+    }
+
+    it('keeps the current name when the old lookup rejects later', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const first = await switchOrganizations();
+
+        await act(async () => {
+          first.reject(new Error('old lookup failed'));
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(screen.getByText('New Org')).toBeInTheDocument();
+        expect(getOrganizationAction).toHaveBeenCalledTimes(2);
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
+    it('keeps the current name when the old lookup resolves later', async () => {
+      const first = await switchOrganizations();
+
+      await act(async () => {
+        first.resolve({ id: 'org_123', name: 'Old Org' });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByText('New Org')).toBeInTheDocument();
+      expect(screen.queryByText('Old Org')).not.toBeInTheDocument();
+    });
+  });
+
   it('shows the organization name when the action resolves', async () => {
     mockAuth({ organizationId: 'org_123' });
     vi.mocked(getOrganizationAction).mockResolvedValue({ id: 'org_123', name: 'Test Org' });

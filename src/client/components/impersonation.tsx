@@ -18,12 +18,22 @@ export function Impersonation({ side = 'bottom', returnTo, ...props }: Impersona
   useEffect(() => {
     if (!organizationId || !impersonator || !user) return;
     if (organization && organization.id === organizationId) return;
-    getOrganizationAction({ data: organizationId }).then(setOrganization, (error) => {
-      // Show no organization name, like an unknown organization. Log rather than swallow: in
-      // public-client (keyless) mode this is the API-key error, otherwise a real failure.
-      setOrganization(null);
-      console.error('[authkit-tanstack-react-start] Failed to load the impersonated organization:', error);
-    });
+    // Ignore a lookup that settles after this effect is cleaned up (e.g. the organization changed).
+    let stale = false;
+    getOrganizationAction({ data: organizationId }).then(
+      (org) => {
+        if (!stale) setOrganization(org);
+      },
+      (error) => {
+        // Show no organization name, like an unknown organization. Log rather than swallow: in
+        // public-client (keyless) mode this is the API-key error, otherwise a real failure.
+        if (!stale) setOrganization(null);
+        console.error('[authkit-tanstack-react-start] Failed to load the impersonated organization:', error);
+      },
+    );
+    return () => {
+      stale = true;
+    };
   }, [organizationId, impersonator, user]);
 
   if (!impersonator || !user) return null;

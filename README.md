@@ -19,14 +19,16 @@ pnpm add @workos/authkit-tanstack-react-start
 
 ### Environment Variables
 
-Create a `.env` file in your project root with the following required variables:
+Create a `.env` file in your project root with the following variables:
 
 ```bash
 WORKOS_CLIENT_ID="client_..."      # Get from WorkOS dashboard
-WORKOS_API_KEY="sk_test_..."       # Get from WorkOS dashboard
 WORKOS_REDIRECT_URI="http://localhost:3000/api/auth/callback"
 WORKOS_COOKIE_PASSWORD="..."       # Min 32 characters
+WORKOS_API_KEY="sk_test_..."       # Optional: get from WorkOS dashboard; needed for WorkOS management APIs
 ```
+
+Without `WORKOS_API_KEY`, AuthKit runs as a PKCE public client. See [Public client (keyless) mode](#public-client-keyless-mode).
 
 Generate a secure cookie password (32+ characters):
 
@@ -43,6 +45,30 @@ openssl rand -base64 24
 | `WORKOS_COOKIE_DOMAIN`   | None                  | Cookie domain (for multi-domain sessions)    |
 | `WORKOS_COOKIE_SAMESITE` | `lax`                 | SameSite attribute (`lax`, `strict`, `none`) |
 | `WORKOS_API_HOSTNAME`    | `api.workos.com`      | WorkOS API hostname                          |
+
+### Public client (keyless) mode
+
+> [!IMPORTANT]
+> Keyless mode needs `@workos/authkit-session` 0.8.0 or later (expected to be the first release with [workos/authkit-session#59](https://github.com/workos/authkit-session/pull/59)). With earlier versions, startup validation still reports `WORKOS_API_KEY is required`.
+
+If your app only signs users in and shouldn't hold a WorkOS secret key, leave `WORKOS_API_KEY` unset. AuthKit then runs as an OAuth public client and needs only three variables:
+
+```bash
+WORKOS_CLIENT_ID="client_..."
+WORKOS_REDIRECT_URI="http://localhost:3000/api/auth/callback"
+WORKOS_COOKIE_PASSWORD="..."
+```
+
+Every sign-in already uses PKCE: the code verifier stays in an HttpOnly cookie on the browser that started the flow, so only that browser can exchange the authorization code, without a client secret. Session refresh sends the refresh token with your client ID and no secret.
+
+What works without a key: `authkitMiddleware` (including automatic session refresh), `getSignInUrl` / `getSignUpUrl` / `getAuthorizationUrl`, `handleCallbackRoute`, `getAuth`, `switchToOrganization`, `signOut`, and the client hooks (`useAuth`, `useAccessToken`, `useTokenClaims`).
+
+What needs a key:
+
+- `getOrganizationAction`. Without a key it rejects with `getOrganizationAction requires a WorkOS API key; set WORKOS_API_KEY. Public-client (keyless) mode supports sign-in only.` before making any request. The `Impersonation` component uses it to show the organization name; without a key the banner still renders, without the organization name, and logs the error to the browser console.
+- Direct WorkOS management calls through `getAuthkit()` → `getWorkOS()`, such as `organizations.*` or `userManagement.getUser`. The WorkOS SDK rejects them with an `ApiKeyRequiredException`.
+
+The WorkOS Node SDK also reads `process.env.WORKOS_API_KEY` itself, so a key in the server's environment always wins: to run keyless, make sure the variable is absent from every env source your server loads.
 
 ### Setup (3 Steps)
 
@@ -780,7 +806,7 @@ If you don't need client hooks, use `getAuth()` in loaders instead.
 The middleware validates configuration on first request. If you see errors about missing variables:
 
 1. Check your `.env` file exists
-2. Verify all required variables are set
+2. Verify all required variables are set (`WORKOS_CLIENT_ID`, `WORKOS_REDIRECT_URI`, `WORKOS_COOKIE_PASSWORD`; `WORKOS_API_KEY` is optional, see [Public client (keyless) mode](#public-client-keyless-mode))
 3. Ensure `WORKOS_COOKIE_PASSWORD` is 32+ characters
 4. Restart your dev server after changing env vars
 

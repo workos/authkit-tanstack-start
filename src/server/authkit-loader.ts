@@ -32,6 +32,10 @@ export async function getConfig<K extends keyof AuthKitConfig>(key: K): Promise<
   return getConfigFromSession(key);
 }
 
+/**
+ * Delegates to authkit-session, which decides what's required. With public-client
+ * support there, `WORKOS_API_KEY` is optional; no extra key check is added here.
+ */
 export async function validateConfig(): Promise<void> {
   const { validateConfig: validateConfigFromSession } = await import('@workos/authkit-session');
   return validateConfigFromSession();

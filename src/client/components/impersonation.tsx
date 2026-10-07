@@ -18,10 +18,12 @@ export function Impersonation({ side = 'bottom', returnTo, ...props }: Impersona
   useEffect(() => {
     if (!organizationId || !impersonator || !user) return;
     if (organization && organization.id === organizationId) return;
-    // Rejects without a WorkOS API key (public-client mode); show the banner without the org name.
-    getOrganizationAction({ data: organizationId })
-      .then(setOrganization)
-      .catch(() => setOrganization(null));
+    getOrganizationAction({ data: organizationId }).then(setOrganization, (error) => {
+      // Show no organization name, like an unknown organization. Log rather than swallow: in
+      // public-client (keyless) mode this is the API-key error, otherwise a real failure.
+      setOrganization(null);
+      console.error('[authkit-tanstack-react-start] Failed to load the impersonated organization:', error);
+    });
   }, [organizationId, impersonator, user]);
 
   if (!impersonator || !user) return null;

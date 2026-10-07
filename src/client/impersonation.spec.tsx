@@ -65,6 +65,46 @@ describe('Impersonation', () => {
     expect(getOrganizationAction).toHaveBeenCalledWith({ data: 'org_123' });
   });
 
+  it('shows no organization name, logs, and leaves no unhandled rejection when the action rejects', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error(
+      'getOrganizationAction requires a WorkOS API key; set WORKOS_API_KEY. Public-client (keyless) mode supports sign-in only.',
+    );
+    mockAuth({ organizationId: 'org_123' });
+    vi.mocked(getOrganizationAction).mockRejectedValue(error);
+
+    try {
+      const { container } = await act(async () => render(<Impersonation />));
+      // Let any unhandled rejection surface before asserting.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(getOrganizationAction).toHaveBeenCalledWith({ data: 'org_123' });
+      expect(container.querySelector('[data-workos-impersonation-root]')).toBeInTheDocument();
+      expect(screen.getByText('user@example.com')).toBeInTheDocument();
+      expect(container).not.toHaveTextContent('within');
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('impersonated organization'), error);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+      consoleError.mockRestore();
+    }
+  });
+
+  it('shows the organization name when the action resolves', async () => {
+    mockAuth({ organizationId: 'org_123' });
+    vi.mocked(getOrganizationAction).mockResolvedValue({ id: 'org_123', name: 'Test Org' });
+
+    await act(async () => {
+      render(<Impersonation />);
+    });
+
+    expect(await screen.findByText('Test Org')).toBeInTheDocument();
+  });
+
   it('should render at the bottom by default', () => {
     mockAuth();
     const { container } = render(<Impersonation />);

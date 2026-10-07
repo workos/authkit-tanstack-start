@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ApiKeyRequiredException, WorkOS } from '@workos-inc/node';
 
 // Mock context state
 let mockAuthContext: any = null;
@@ -341,6 +342,41 @@ describe('Actions', () => {
       const result = await getOrganizationAction({ data: 'bad_org' });
 
       expect(result).toBeNull();
+    });
+
+    it('rejects with an error naming WORKOS_API_KEY when the client has no API key', async () => {
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' }, claims: { org_id: 'org_123' } }),
+        request: new Request('http://test.local'),
+      };
+      // What a keyless WorkOS client throws for a management API, before any request.
+      // The SDK falls back to process.env.WORKOS_API_KEY, so keep it out.
+      vi.stubEnv('WORKOS_API_KEY', undefined);
+      const keyless = new WorkOS({ clientId: 'client_123' });
+      vi.unstubAllEnvs();
+      expect(keyless.key).toBeUndefined();
+      mockGetOrganization.mockImplementation((id: string) => keyless.organizations.getOrganization(id));
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const rejection = getOrganizationAction({ data: 'org_123' });
+
+      await expect(rejection).rejects.toThrow(
+        'getOrganizationAction requires a WorkOS API key; set WORKOS_API_KEY. Public-client (keyless) mode supports sign-in only.',
+      );
+      await expect(rejection).rejects.toMatchObject({ cause: expect.any(ApiKeyRequiredException) });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it('still returns null for an unauthorized organization without an API key', async () => {
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' }, claims: { org_id: 'org_123' } }),
+        request: new Request('http://test.local'),
+      };
+      mockGetOrganization.mockRejectedValue(new ApiKeyRequiredException('/organizations/org_456'));
+
+      await expect(getOrganizationAction({ data: 'org_456' })).resolves.toBeNull();
+      expect(mockGetOrganization).not.toHaveBeenCalled();
     });
   });
 });

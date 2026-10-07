@@ -65,7 +65,7 @@ export const switchToOrganizationAction = createServerFn({ method: 'POST' })
  * Fetch organization details by ID.
  *
  * Requires a WorkOS API key: in public-client (keyless) mode this rejects with
- * the WorkOS SDK's `ApiKeyRequiredException`.
+ * an error naming `WORKOS_API_KEY`.
  */
 export const getOrganizationAction = createServerFn({ method: 'GET' })
   .validator((organizationId: string) => organizationId)

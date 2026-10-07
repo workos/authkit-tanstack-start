@@ -67,6 +67,11 @@ export async function switchToOrganizationBody(data: {
   return mapAuthToBaseInfo(result);
 }
 
+/**
+ * Requires a WorkOS API key. In public-client (keyless) mode the WorkOS SDK
+ * throws an `ApiKeyRequiredException`, which is rethrown so callers see why;
+ * every other failure still resolves to `null`.
+ */
 export async function getOrganizationBody(organizationId: string): Promise<OrganizationInfo | null> {
   try {
     // Authorization: only resolve the organization the caller is currently
@@ -82,7 +87,9 @@ export async function getOrganizationBody(organizationId: string): Promise<Organ
     const workos = getWorkOS();
     const org = await workos.organizations.getOrganization(organizationId);
     return { id: org.id, name: org.name };
-  } catch {
+  } catch (error) {
+    // The SDK sets `name` explicitly; matching on it survives duplicate SDK copies.
+    if (error instanceof Error && error.name === 'ApiKeyRequiredException') throw error;
     return null;
   }
 }

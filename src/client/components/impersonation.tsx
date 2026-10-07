@@ -18,7 +18,10 @@ export function Impersonation({ side = 'bottom', returnTo, ...props }: Impersona
   useEffect(() => {
     if (!organizationId || !impersonator || !user) return;
     if (organization && organization.id === organizationId) return;
-    getOrganizationAction({ data: organizationId }).then(setOrganization);
+    // Rejects without a WorkOS API key (public-client mode); show the banner without the org name.
+    getOrganizationAction({ data: organizationId })
+      .then(setOrganization)
+      .catch(() => setOrganization(null));
   }, [organizationId, impersonator, user]);
 
   if (!impersonator || !user) return null;

@@ -41,6 +41,8 @@ export class TokenStore {
   private listeners = new Set<() => void>();
   private refreshPromise: Promise<string | undefined> | null = null;
   private refreshTimeout: ReturnType<typeof setTimeout> | undefined;
+  // Browser clock minus WorkOS clock (seconds): refresh request start minus the minted token's `iat`.
+  private clockOffsetSeconds = 0;
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -75,7 +77,11 @@ export class TokenStore {
     const delay = tokenData === undefined ? RETRY_DELAY_SECONDS * 1000 : this.getRefreshDelay(tokenData);
 
     this.refreshTimeout = setTimeout(() => {
-      void this.getAccessTokenSilently().catch(() => {});
+      // A token timer that finds its token still fresh means the wall clock jumped: refresh to re-measure.
+      const current = this.parseToken(this.state.token);
+      const refresh =
+        tokenData && current && !current.isExpiring ? this.refreshTokenSilently() : this.getAccessTokenSilently();
+      void refresh.catch(() => {});
     }, delay);
   }
 
@@ -87,11 +93,6 @@ export class TokenStore {
     totalTokenLifetime: number;
   }) {
     const bufferSeconds = getExpiryBuffer(totalTokenLifetime);
-
-    if (timeUntilExpiry <= bufferSeconds) {
-      return 0;
-    }
-
     const idealDelay = (timeUntilExpiry - bufferSeconds) * 1000;
 
     return Math.min(Math.max(idealDelay, MIN_REFRESH_DELAY_SECONDS * 1000), MAX_REFRESH_DELAY_SECONDS * 1000);
@@ -102,7 +103,7 @@ export class TokenStore {
 
     try {
       const { payload } = decodeJwt(token);
-      const now = Math.floor(Date.now() / 1000);
+      const now = Math.floor(Date.now() / 1000) - this.clockOffsetSeconds;
 
       if (typeof payload.exp !== 'number') {
         return null;
@@ -170,6 +171,18 @@ export class TokenStore {
     return this._refreshToken(false);
   }
 
+  private async fetchRefreshedToken(): Promise<string | undefined> {
+    const requestedAt = Math.floor(Date.now() / 1000);
+    const token = await refreshAccessTokenAction();
+    const iat = this.parseToken(token)?.payload.iat;
+
+    if (typeof iat === 'number' && Number.isFinite(iat)) {
+      this.clockOffsetSeconds = requestedAt - iat;
+    }
+
+    return token;
+  }
+
   private async refreshTokenSilently(): Promise<string | undefined> {
     return this._refreshToken(true);
   }
@@ -192,7 +205,7 @@ export class TokenStore {
         let token: string | undefined;
 
         if (!silent) {
-          token = await refreshAccessTokenAction();
+          token = await this.fetchRefreshedToken();
         } else {
           if (!previousToken) {
             token = await getAccessTokenAction();
@@ -207,13 +220,13 @@ export class TokenStore {
             }
 
             if (!token || (tokenData && tokenData.isExpiring)) {
-              const refreshedToken = await refreshAccessTokenAction();
+              const refreshedToken = await this.fetchRefreshedToken();
               if (refreshedToken) {
                 token = refreshedToken;
               }
             }
           } else {
-            token = await refreshAccessTokenAction();
+            token = await this.fetchRefreshedToken();
           }
         }
 
@@ -251,6 +264,7 @@ export class TokenStore {
   reset() {
     this.state = { token: undefined, loading: false, error: null };
     this.refreshPromise = null;
+    this.clockOffsetSeconds = 0;
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;

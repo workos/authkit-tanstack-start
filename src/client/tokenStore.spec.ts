@@ -263,21 +263,28 @@ describe('TokenStore', () => {
   });
 
   describe('getRefreshDelay edge cases', () => {
-    it('returns 0 when token is within expiry buffer', async () => {
+    it('applies the 15 s floor when token is within expiry buffer', async () => {
       const currentTimeInSeconds = Math.floor(Date.now() / 1000);
       const nearExpiryPayload = {
         sub: 'user_123',
         sid: 'session_123',
-        iat: currentTimeInSeconds - 100,
-        exp: currentTimeInSeconds + 30, // Within 60-second buffer
+        iat: currentTimeInSeconds,
+        exp: currentTimeInSeconds + 25, // Lifetime shorter than the 30-second buffer
       };
       const nearExpiryToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(nearExpiryPayload))}.mock-signature`;
 
       vi.mocked(refreshAccessTokenAction).mockResolvedValue(nearExpiryToken);
       await store.refreshToken();
 
-      // The refresh should be scheduled immediately (delay ~0)
       expect(store.getSnapshot().token).toBe(nearExpiryToken);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      // The scheduled refresh waits for MIN_REFRESH_DELAY_SECONDS, not 0.
+      await vi.advanceTimersByTimeAsync(14_999);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
     });
 
     it('caps refresh delay at maximum value', async () => {
@@ -408,6 +415,267 @@ describe('TokenStore', () => {
       expect(served).not.toBe(attackerToken);
 
       localStore.reset();
+    });
+  });
+
+  // https://github.com/workos/authkit-tanstack-start/issues/128
+  // Browser clock = the faked Date.now(). WorkOS clock = Date.now() - skew.
+  describe('refresh loop when the browser clock is skewed (#128)', () => {
+    const START = Date.UTC(2025, 9, 18, 12, 0, 0);
+    const LATENCY_MS = 150;
+    const TEN_MINUTES_MS = 10 * 60_000;
+
+    const makeToken = (payload: Record<string, unknown>) =>
+      `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(payload))}.sig`;
+    const workosNowSeconds = (skew: number) => Math.floor((Date.now() - skew * 1000) / 1000);
+
+    function workosToken(skew: number, { lifetime = 300, ageSeconds = 0 } = {}) {
+      const iat = workosNowSeconds(skew) - ageSeconds;
+      return makeToken({ sub: 'user_123', sid: 'session_123', iat, exp: iat + lifetime });
+    }
+
+    // The server action: a ~150 ms round trip that mints a fresh token on WorkOS's clock.
+    function mintOnWorkosClock(skew: number, { lifetime = 300, mintAfterMs = LATENCY_MS, respondAfterMs = 0 } = {}) {
+      vi.mocked(refreshAccessTokenAction).mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, mintAfterMs));
+        const token = workosToken(skew, { lifetime });
+        if (respondAfterMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, respondAfterMs));
+        }
+        return token;
+      });
+    }
+
+    // How long the store thinks a token minted right now on WorkOS's clock has left.
+    // 300 means the store's clock offset matches `skew`.
+    const perceivedLifetime = (skew: number) => store.parseToken(workosToken(skew))?.timeUntilExpiry;
+
+    beforeEach(() => {
+      vi.setSystemTime(START);
+      store.subscribe(() => {});
+    });
+
+    afterEach(() => {
+      store.reset();
+    });
+
+    describe.each([0, 269, 271, 400, 1620, -600])('skew %i s', (skew) => {
+      it('makes exactly one refresh call in the first 5 s', async () => {
+        mintOnWorkosClock(skew);
+        void store.refreshToken();
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+      });
+
+      it('refreshes once per 270 s over 10 minutes', async () => {
+        mintOnWorkosClock(skew);
+        void store.refreshToken();
+        await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS);
+        // t = 0, ~270 s, ~540 s
+        expect(refreshAccessTokenAction).toHaveBeenCalledTimes(3);
+      });
+
+      it("judges expiry on WorkOS's clock after a refresh", async () => {
+        mintOnWorkosClock(skew);
+        void store.refreshToken();
+        await vi.advanceTimersByTimeAsync(LATENCY_MS);
+        expect(perceivedLifetime(skew)).toBe(300);
+        expect(store.parseToken(store.getSnapshot().token)?.isExpiring).toBe(false);
+      });
+    });
+
+    it('measures from the request start, so a slow response cannot push refreshes later', async () => {
+      // Minted 100 ms after the request, delivered 2.4 s later.
+      mintOnWorkosClock(1620, { mintAfterMs: 100, respondAfterMs: 2_400 });
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(2_500);
+      // Measuring on arrival would count the 2.4 s as skew and report 302.
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it('refreshes a token shorter than the buffer every 15 s instead of looping', async () => {
+      mintOnWorkosClock(0, { lifetime: 20 });
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(55_000);
+      // t = 0, ~15 s, ~30 s, ~45 s
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(4);
+    });
+
+    it('startup on a correct clock makes no extra refresh calls', async () => {
+      mintOnWorkosClock(0);
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(0));
+      void store.getAccessTokenSilently();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(refreshAccessTokenAction).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS - 5_000);
+      // Scheduled refreshes at ~270 s and ~540 s only.
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([271, 1620])('startup on a clock %i s ahead costs one refresh, then the normal cadence', async (skew) => {
+      mintOnWorkosClock(skew);
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(skew));
+      void store.getAccessTokenSilently();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(getAccessTokenAction).toHaveBeenCalledTimes(1);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(TEN_MINUTES_MS - 5_000);
+      // t = 0, ~270 s, ~540 s
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not measure skew from tokens served by getAccessTokenAction', async () => {
+      mintOnWorkosClock(0);
+      // Correct clock; the session's current token was minted 120 s ago.
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(0, { ageSeconds: 120 }));
+      await store.getAccessTokenSilently();
+      expect(perceivedLifetime(0)).toBe(300);
+
+      // 180 s left, so the refresh is due at 150 s (not 270 s, as it would be if its age counted as skew).
+      await vi.advanceTimersByTimeAsync(149_000);
+      expect(refreshAccessTokenAction).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, () => string]>([
+      ['no iat', () => makeToken({ sub: 'user_123', sid: 'session_123', exp: workosNowSeconds(1620) + 300 })],
+      [
+        'a string iat',
+        () => makeToken({ sub: 'user_123', sid: 'session_123', iat: 'soon', exp: workosNowSeconds(1620) + 300 }),
+      ],
+      [
+        'a null iat',
+        () => makeToken({ sub: 'user_123', sid: 'session_123', iat: null, exp: workosNowSeconds(1620) + 300 }),
+      ],
+      ['an undecodable payload', () => 'header.not-base64-json.sig'],
+      ['an opaque token', () => 'opaque-token'],
+    ])('a minted token with %s leaves the offset unchanged', async (_label, mint) => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      expect(perceivedLifetime(1620)).toBe(300);
+
+      vi.mocked(refreshAccessTokenAction).mockImplementation(async () => mint());
+      await store.refreshToken();
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it('with no iat to measure, a skewed clock falls back to the 15 s floor instead of looping', async () => {
+      vi.mocked(refreshAccessTokenAction).mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
+        return makeToken({ sub: 'user_123', sid: 'session_123', exp: workosNowSeconds(1620) + 300 });
+      });
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(60_000);
+      // t = 0, ~15 s, ~30 s, ~45 s
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(4);
+      expect(perceivedLifetime(0)).toBe(300);
+    });
+
+    it("refreshes right away on getAccessToken() when the token is already expired on WorkOS's clock", async () => {
+      // A minted token that expires the moment it is issued (e.g. at the end of its session).
+      mintOnWorkosClock(1620, { lifetime: 0 });
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      expect(store.parseToken(store.getSnapshot().token)?.timeUntilExpiry).toBe(0);
+
+      // The scheduled timer waits for the 15 s floor; an explicit caller does not.
+      mintOnWorkosClock(1620);
+      const pending = store.getAccessToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      await pending;
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+      expect(store.parseToken(store.getSnapshot().token)?.timeUntilExpiry).toBe(300);
+    });
+
+    it('a late timer (hidden-tab throttling) that finds the token expired refreshes once, then resumes the cadence', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+
+      // Throttling holds the 270 s timer for an extra minute: the clock moves, the timer doesn't fire.
+      vi.setSystemTime(Date.now() + 60_000);
+      expect(store.parseToken(store.getSnapshot().token)?.timeUntilExpiry).toBe(240);
+      await vi.advanceTimersByTimeAsync(270_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(270_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(3);
+    });
+
+    it('dedupes concurrent refreshes into one call', async () => {
+      mintOnWorkosClock(1620);
+      const results = Promise.all([store.refreshToken(), store.getAccessToken(), store.getAccessTokenSilently()]);
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      const [a, b, c] = await results;
+      expect(a).toBe(b);
+      expect(b).toBe(c);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it("keeps the offset across clearToken() and judges the next session's startup token with it", async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+
+      store.clearToken();
+      expect(perceivedLifetime(1620)).toBe(300);
+
+      // Next sign-in: the session's token is 100 s old, with 200 s left on WorkOS's clock.
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(1620, { ageSeconds: 100 }));
+      await store.getAccessTokenSilently();
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it('re-measures when the OS corrects the clock mid-session instead of stalling on a stale offset', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+
+      // NTP fixes the 27-minute skew: the browser clock now matches WorkOS's.
+      vi.setSystemTime(Date.now() - 1620 * 1000);
+      mintOnWorkosClock(0);
+
+      // The 270 s timer fires while the stale offset still makes the token look fresh.
+      await vi.advanceTimersByTimeAsync(270_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      expect(perceivedLifetime(0)).toBe(300);
+
+      // Back to the normal cadence on the corrected clock.
+      await vi.advanceTimersByTimeAsync(270_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(3);
+    });
+
+    it('keeps the last offset when a refresh fails', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+
+      vi.mocked(refreshAccessTokenAction).mockRejectedValue(new Error('Network error'));
+      await expect(store.refreshToken()).rejects.toThrow('Network error');
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it('reset() forgets the offset', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      expect(perceivedLifetime(1620)).toBe(300);
+
+      store.reset();
+      expect(perceivedLifetime(0)).toBe(300);
     });
   });
 });

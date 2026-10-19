@@ -41,14 +41,28 @@ export class TokenStore {
   private listeners = new Set<() => void>();
   private refreshPromise: Promise<string | undefined> | null = null;
   private refreshTimeout: ReturnType<typeof setTimeout> | undefined;
+  // Browser clock minus WorkOS clock (seconds): refresh request start minus the minted token's `iat`.
+  private clockOffsetSeconds = 0;
+  private idleSince: number | undefined;
+  // A token retained through an idle gap; the getters refresh it before handing it out.
+  private unverifiedToken: string | undefined;
 
   subscribe = (listener: () => void) => {
+    // Idle longer than the refresh floor (|gap| also counts clock jumps) leaves the offset unchecked: drop it.
+    if (this.idleSince !== undefined && Math.abs(Date.now() - this.idleSince) > MIN_REFRESH_DELAY_SECONDS * 1000) {
+      this.clockOffsetSeconds = 0;
+      this.unverifiedToken = this.state.token;
+    }
+    this.idleSince = undefined;
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
-      if (this.listeners.size === 0 && this.refreshTimeout) {
-        clearTimeout(this.refreshTimeout);
-        this.refreshTimeout = undefined;
+      if (this.listeners.size === 0) {
+        this.idleSince = Date.now();
+        if (this.refreshTimeout) {
+          clearTimeout(this.refreshTimeout);
+          this.refreshTimeout = undefined;
+        }
       }
     };
   };
@@ -75,7 +89,11 @@ export class TokenStore {
     const delay = tokenData === undefined ? RETRY_DELAY_SECONDS * 1000 : this.getRefreshDelay(tokenData);
 
     this.refreshTimeout = setTimeout(() => {
-      void this.getAccessTokenSilently().catch(() => {});
+      // A token timer that finds its token still fresh means the wall clock jumped: refresh to re-measure.
+      const current = this.parseToken(this.state.token);
+      const refresh =
+        tokenData && current && !current.isExpiring ? this.refreshTokenSilently() : this.getAccessTokenSilently();
+      void refresh.catch(() => {});
     }, delay);
   }
 
@@ -87,11 +105,6 @@ export class TokenStore {
     totalTokenLifetime: number;
   }) {
     const bufferSeconds = getExpiryBuffer(totalTokenLifetime);
-
-    if (timeUntilExpiry <= bufferSeconds) {
-      return 0;
-    }
-
     const idealDelay = (timeUntilExpiry - bufferSeconds) * 1000;
 
     return Math.min(Math.max(idealDelay, MIN_REFRESH_DELAY_SECONDS * 1000), MAX_REFRESH_DELAY_SECONDS * 1000);
@@ -102,7 +115,7 @@ export class TokenStore {
 
     try {
       const { payload } = decodeJwt(token);
-      const now = Math.floor(Date.now() / 1000);
+      const now = Math.floor(Date.now() / 1000) - this.clockOffsetSeconds;
 
       if (typeof payload.exp !== 'number') {
         return null;
@@ -131,6 +144,7 @@ export class TokenStore {
   }
 
   clearToken() {
+    this.clockOffsetSeconds = 0;
     this.setState({ token: undefined, error: null, loading: false });
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
@@ -138,7 +152,15 @@ export class TokenStore {
     }
   }
 
+  private isUnverified(): boolean {
+    return this.state.token !== undefined && this.state.token === this.unverifiedToken;
+  }
+
   async getAccessToken(): Promise<string | undefined> {
+    if (this.isUnverified()) {
+      return this.refreshTokenSilently();
+    }
+
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -153,6 +175,10 @@ export class TokenStore {
   }
 
   async getAccessTokenSilently(): Promise<string | undefined> {
+    if (this.isUnverified()) {
+      return this.refreshTokenSilently();
+    }
+
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -168,6 +194,19 @@ export class TokenStore {
 
   async refreshToken(): Promise<string | undefined> {
     return this._refreshToken(false);
+  }
+
+  private async fetchRefreshedToken(): Promise<string | undefined> {
+    const requestedAt = Math.floor(Date.now() / 1000);
+    const token = await refreshAccessTokenAction();
+    this.unverifiedToken = undefined;
+    const iat = this.parseToken(token)?.payload.iat;
+
+    if (typeof iat === 'number' && Number.isFinite(iat)) {
+      this.clockOffsetSeconds = requestedAt - iat;
+    }
+
+    return token;
   }
 
   private async refreshTokenSilently(): Promise<string | undefined> {
@@ -192,7 +231,7 @@ export class TokenStore {
         let token: string | undefined;
 
         if (!silent) {
-          token = await refreshAccessTokenAction();
+          token = await this.fetchRefreshedToken();
         } else {
           if (!previousToken) {
             token = await getAccessTokenAction();
@@ -207,13 +246,13 @@ export class TokenStore {
             }
 
             if (!token || (tokenData && tokenData.isExpiring)) {
-              const refreshedToken = await refreshAccessTokenAction();
+              const refreshedToken = await this.fetchRefreshedToken();
               if (refreshedToken) {
                 token = refreshedToken;
               }
             }
           } else {
-            token = await refreshAccessTokenAction();
+            token = await this.fetchRefreshedToken();
           }
         }
 
@@ -251,6 +290,9 @@ export class TokenStore {
   reset() {
     this.state = { token: undefined, loading: false, error: null };
     this.refreshPromise = null;
+    this.clockOffsetSeconds = 0;
+    this.idleSince = undefined;
+    this.unverifiedToken = undefined;
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;

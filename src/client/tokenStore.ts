@@ -44,11 +44,14 @@ export class TokenStore {
   // Browser clock minus WorkOS clock (seconds): refresh request start minus the minted token's `iat`.
   private clockOffsetSeconds = 0;
   private idleSince: number | undefined;
+  // A token retained through an idle gap; the getters refresh it before handing it out.
+  private unverifiedToken: string | undefined;
 
   subscribe = (listener: () => void) => {
     // Idle longer than the refresh floor (|gap| also counts clock jumps) leaves the offset unchecked: drop it.
     if (this.idleSince !== undefined && Math.abs(Date.now() - this.idleSince) > MIN_REFRESH_DELAY_SECONDS * 1000) {
       this.clockOffsetSeconds = 0;
+      this.unverifiedToken = this.state.token;
     }
     this.idleSince = undefined;
     this.listeners.add(listener);
@@ -149,7 +152,15 @@ export class TokenStore {
     }
   }
 
+  private isUnverified(): boolean {
+    return this.state.token !== undefined && this.state.token === this.unverifiedToken;
+  }
+
   async getAccessToken(): Promise<string | undefined> {
+    if (this.isUnverified()) {
+      return this.refreshTokenSilently();
+    }
+
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -164,6 +175,10 @@ export class TokenStore {
   }
 
   async getAccessTokenSilently(): Promise<string | undefined> {
+    if (this.isUnverified()) {
+      return this.refreshTokenSilently();
+    }
+
     const tokenData = this.parseToken(this.state.token);
 
     if (tokenData && !tokenData.isExpiring) {
@@ -184,6 +199,7 @@ export class TokenStore {
   private async fetchRefreshedToken(): Promise<string | undefined> {
     const requestedAt = Math.floor(Date.now() / 1000);
     const token = await refreshAccessTokenAction();
+    this.unverifiedToken = undefined;
     const iat = this.parseToken(token)?.payload.iat;
 
     if (typeof iat === 'number' && Number.isFinite(iat)) {
@@ -276,6 +292,7 @@ export class TokenStore {
     this.refreshPromise = null;
     this.clockOffsetSeconds = 0;
     this.idleSince = undefined;
+    this.unverifiedToken = undefined;
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;

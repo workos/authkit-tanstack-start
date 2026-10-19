@@ -693,7 +693,36 @@ describe('TokenStore', () => {
         const pending = store.getAccessToken();
         await vi.advanceTimersByTimeAsync(LATENCY_MS);
         await pending;
+        expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
         expect(perceivedLifetime(0)).toBe(300);
+      },
+    );
+
+    it.each(['getAccessToken', 'getAccessTokenSilently'] as const)(
+      '%s refreshes a token retained through an idle gap on a clock 600 s behind instead of handing it out',
+      async (getter) => {
+        mintOnWorkosClock(-600);
+        void store.refreshToken();
+        await vi.advanceTimersByTimeAsync(LATENCY_MS);
+        const retained = store.getSnapshot().token;
+
+        unsubscribe();
+        await vi.advanceTimersByTimeAsync(400_000);
+        store.subscribe(() => {});
+
+        // Expired 100 s ago on WorkOS's clock, but valid for 500 s more once the offset is dropped.
+        expect(store.parseToken(retained)?.timeUntilExpiry).toBe(500);
+        const pending = store[getter]();
+        await vi.advanceTimersByTimeAsync(LATENCY_MS);
+        const served = await pending;
+
+        expect(served).not.toBe(retained);
+        expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+        expect(store.parseToken(served)?.timeUntilExpiry).toBe(300);
+
+        // Measured fresh: later calls hand out the new token without refreshing again.
+        await expect(store.getAccessToken()).resolves.toBe(served);
+        expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
       },
     );
 

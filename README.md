@@ -49,7 +49,7 @@ openssl rand -base64 24
 ### Public client (keyless) mode
 
 > [!IMPORTANT]
-> Keyless mode needs `@workos/authkit-session` 0.8.0 or later (expected to be the first release with [workos/authkit-session#59](https://github.com/workos/authkit-session/pull/59)). With earlier versions, startup validation still reports `WORKOS_API_KEY is required`.
+> Keyless mode needs `@workos/authkit-session` 0.8.0 or later. With earlier versions, startup validation still reports `WORKOS_API_KEY is required`.
 
 If your app only signs users in and shouldn't hold a WorkOS secret key, leave `WORKOS_API_KEY` unset. AuthKit then runs as an OAuth public client and needs only three variables:
 

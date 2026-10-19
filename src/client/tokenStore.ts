@@ -43,14 +43,23 @@ export class TokenStore {
   private refreshTimeout: ReturnType<typeof setTimeout> | undefined;
   // Browser clock minus WorkOS clock (seconds): refresh request start minus the minted token's `iat`.
   private clockOffsetSeconds = 0;
+  private idleSince: number | undefined;
 
   subscribe = (listener: () => void) => {
+    // Idle longer than the refresh floor (|gap| also counts clock jumps) leaves the offset unchecked: drop it.
+    if (this.idleSince !== undefined && Math.abs(Date.now() - this.idleSince) > MIN_REFRESH_DELAY_SECONDS * 1000) {
+      this.clockOffsetSeconds = 0;
+    }
+    this.idleSince = undefined;
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
-      if (this.listeners.size === 0 && this.refreshTimeout) {
-        clearTimeout(this.refreshTimeout);
-        this.refreshTimeout = undefined;
+      if (this.listeners.size === 0) {
+        this.idleSince = Date.now();
+        if (this.refreshTimeout) {
+          clearTimeout(this.refreshTimeout);
+          this.refreshTimeout = undefined;
+        }
       }
     };
   };
@@ -132,6 +141,7 @@ export class TokenStore {
   }
 
   clearToken() {
+    this.clockOffsetSeconds = 0;
     this.setState({ token: undefined, error: null, loading: false });
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
@@ -265,6 +275,7 @@ export class TokenStore {
     this.state = { token: undefined, loading: false, error: null };
     this.refreshPromise = null;
     this.clockOffsetSeconds = 0;
+    this.idleSince = undefined;
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
       this.refreshTimeout = undefined;

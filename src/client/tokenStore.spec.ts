@@ -450,9 +450,11 @@ describe('TokenStore', () => {
     // 300 means the store's clock offset matches `skew`.
     const perceivedLifetime = (skew: number) => store.parseToken(workosToken(skew))?.timeUntilExpiry;
 
+    let unsubscribe: () => void;
+
     beforeEach(() => {
       vi.setSystemTime(START);
-      store.subscribe(() => {});
+      unsubscribe = store.subscribe(() => {});
     });
 
     afterEach(() => {
@@ -623,20 +625,77 @@ describe('TokenStore', () => {
       expect(perceivedLifetime(1620)).toBe(300);
     });
 
-    it("keeps the offset across clearToken() and judges the next session's startup token with it", async () => {
+    it('clearToken() forgets the offset, so a clock corrected between sessions schedules from the real expiry', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      store.clearToken();
+
+      // Between sessions, NTP fixes the 27-minute skew.
+      vi.setSystemTime(Date.now() - 1620 * 1000);
+      mintOnWorkosClock(0);
+
+      // Next sign-in: a fresh 300 s token from the session.
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(0));
+      await store.getAccessTokenSilently();
+      expect(store.parseToken(store.getSnapshot().token)?.timeUntilExpiry).toBe(300);
+
+      // Refresh due at 270 s (real expiry - buffer), not 1,890 s.
+      await vi.advanceTimersByTimeAsync(269_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+    });
+
+    it('after clearToken() on a still-skewed clock, the next session pays one startup refresh and re-measures', async () => {
+      mintOnWorkosClock(1620);
+      void store.refreshToken();
+      await vi.advanceTimersByTimeAsync(LATENCY_MS);
+      store.clearToken();
+
+      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(1620));
+      void store.getAccessTokenSilently();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(refreshAccessTokenAction).toHaveBeenCalledTimes(2);
+      expect(perceivedLifetime(1620)).toBe(300);
+    });
+
+    it('keeps the offset across a quick unmount and remount', async () => {
       mintOnWorkosClock(1620);
       void store.refreshToken();
       await vi.advanceTimersByTimeAsync(LATENCY_MS);
 
-      store.clearToken();
-      expect(perceivedLifetime(1620)).toBe(300);
+      unsubscribe();
+      await vi.advanceTimersByTimeAsync(1_000);
+      store.subscribe(() => {});
 
-      // Next sign-in: the session's token is 100 s old, with 200 s left on WorkOS's clock.
-      vi.mocked(getAccessTokenAction).mockResolvedValue(workosToken(1620, { ageSeconds: 100 }));
+      expect(perceivedLifetime(1620)).toBe(300);
       await store.getAccessTokenSilently();
       expect(refreshAccessTokenAction).toHaveBeenCalledTimes(1);
-      expect(perceivedLifetime(1620)).toBe(300);
     });
+
+    it.each([5, 400])(
+      'forgets the offset when the clock is corrected during a %i s idle gap with no listeners',
+      async (idleSeconds) => {
+        mintOnWorkosClock(1620);
+        void store.refreshToken();
+        await vi.advanceTimersByTimeAsync(LATENCY_MS);
+
+        // Every listener unmounts, cancelling the timer that would have re-measured the offset.
+        unsubscribe();
+        await vi.advanceTimersByTimeAsync(idleSeconds * 1000);
+        vi.setSystemTime(Date.now() - 1620 * 1000);
+        mintOnWorkosClock(0);
+        store.subscribe(() => {});
+
+        // The stored token is judged by its real expiry, not 1,620 s later.
+        expect(store.parseToken(store.getSnapshot().token)?.timeUntilExpiry).toBe(300 - idleSeconds);
+        const pending = store.getAccessToken();
+        await vi.advanceTimersByTimeAsync(LATENCY_MS);
+        await pending;
+        expect(perceivedLifetime(0)).toBe(300);
+      },
+    );
 
     it('re-measures when the OS corrects the clock mid-session instead of stalling on a stale offset', async () => {
       mintOnWorkosClock(1620);

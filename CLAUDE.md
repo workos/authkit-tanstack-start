@@ -153,7 +153,7 @@ Session encryption: iron-session (sealed cookies). JWT verification: jose (JWKS)
 
 ```env
 WORKOS_CLIENT_ID=<your_client_id>
-WORKOS_API_KEY=<your_api_key>
+WORKOS_API_KEY=<your_api_key>  # optional: omit for keyless PKCE public-client mode
 WORKOS_REDIRECT_URI=http://localhost:3000/callback
 WORKOS_COOKIE_PASSWORD=<min_32_chars>
 ```

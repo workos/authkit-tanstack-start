@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/workos/authkit-tanstack-start/compare/v0.11.1...v0.12.0) (2026-10-20)
+
+
+### Features
+
+* support keyless PKCE public clients ([#127](https://github.com/workos/authkit-tanstack-start/issues/127)) ([3222729](https://github.com/workos/authkit-tanstack-start/commit/3222729f9f44de55fc6e7fecdad7fabe5ce44505))
+
+
+### Bug Fixes
+
+* align Node engine with TanStack Start minimum ([#121](https://github.com/workos/authkit-tanstack-start/issues/121)) ([c19b44f](https://github.com/workos/authkit-tanstack-start/commit/c19b44fe8718f389105994bdd7095fd840054f43))
+* **client:** stop the token refresh loop when the browser clock runs ahead ([#129](https://github.com/workos/authkit-tanstack-start/issues/129)) ([1321871](https://github.com/workos/authkit-tanstack-start/commit/1321871c46fd5d9104d688e0c368890359643fe7))
+
 ## [0.11.1](https://github.com/workos/authkit-tanstack-start/compare/v0.11.0...v0.11.1) (2026-09-15)
 
 

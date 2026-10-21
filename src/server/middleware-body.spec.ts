@@ -139,6 +139,30 @@ describe('middlewareBody', () => {
       expect(result.response.headers.get('Set-Cookie')).toContain('wos-session=new_value');
     });
 
+    it.each([
+      ['organization switch', 'wos-session=org_b_r3; Path=/'],
+      ['sign out', 'wos-session=; Path=/; Max-Age=0'],
+    ])('keeps the %s cookie after the auto-refresh cookie', async (_, handlerCookie) => {
+      const refreshCookie = 'wos-session=org_a_r2; Path=/';
+      mockAuthkit.withAuth.mockResolvedValue({
+        auth: { user: { id: 'user_123' } },
+        refreshedSessionData: 'refreshed_session',
+      });
+      mockAuthkit.saveSession.mockResolvedValue({
+        response: new Response(null, { headers: { 'Set-Cookie': refreshCookie } }),
+      });
+
+      const result = await middlewareBody({
+        request: new Request('http://test.local'),
+        next: vi.fn(async ({ context }: any) => {
+          context.__setPendingHeader('Set-Cookie', handlerCookie);
+          return { response: new Response('OK') };
+        }),
+      });
+
+      expect(result.response.headers.getSetCookie()).toEqual([refreshCookie, handlerCookie]);
+    });
+
     it('provides correct context shape to downstream handlers', async () => {
       const mockAuth = { user: { id: 'user_123' }, sessionId: 'session_123' };
       mockAuthkit.withAuth.mockResolvedValue({

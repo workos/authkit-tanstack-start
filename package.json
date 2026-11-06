@@ -22,7 +22,7 @@
     "@vitest/coverage-v8": "4.0.15",
     "@vitest/ui": "^4.0.15",
     "@workos-inc/node": "^10.7.0",
-    "happy-dom": "^20.0.11",
+    "happy-dom": "^21.0.4",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
     "react": "^19.2.3",

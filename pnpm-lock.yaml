@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@workos/authkit-session':
-        specifier: ^0.8.0
-        version: 0.8.0(@workos-inc/node@10.7.0)(typescript@5.9.3)
+        specifier: ^0.9.1
+        version: 0.9.1(@workos-inc/node@10.7.0)(typescript@5.9.3)
     devDependencies:
       '@tanstack/react-router':
         specifier: ^1.170.15
@@ -2185,11 +2185,11 @@ packages:
     resolution: {integrity: sha512-rffa9znZuIv4yo+9JRxGOLTTSxh0XhOT6jlsktgqEi9MuB9V0VFHRzLd3bTpkq+J9sgrPZNGpvX4aWNfMqt5cQ==}
     engines: {node: '>=22.11.0'}
 
-  '@workos/authkit-session@0.8.0':
-    resolution: {integrity: sha512-max44mLZeR3pgVnILaix2eCVxE9jAnvlxl5LOwHFNdIdOliJxHNVjSQhHpYf6dM/ymPvf2HDB+9zjcAkPwcdIw==}
+  '@workos/authkit-session@0.9.1':
+    resolution: {integrity: sha512-kBAUC2/3aMDnPVmJjIG/DR5StG+U8NHNFp16KvJH+o7leS8fPFD4e7uINtuacYUk0N92EUrKf+po++rv0iu9Sg==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
-      '@workos-inc/node': ^8.0.0 || ^9.0.0 || ^10.0.0
+      '@workos-inc/node': ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0 || ^12.0.0
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -5051,7 +5051,7 @@ snapshots:
 
   '@workos-inc/node@10.7.0': {}
 
-  '@workos/authkit-session@0.8.0(@workos-inc/node@10.7.0)(typescript@5.9.3)':
+  '@workos/authkit-session@0.9.1(@workos-inc/node@10.7.0)(typescript@5.9.3)':
     dependencies:
       '@workos-inc/node': 10.7.0
       iron-webcrypto: 2.0.0

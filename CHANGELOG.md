@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/workos/authkit-tanstack-start/compare/v0.12.0...v0.12.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **deps:** Bump @workos/authkit-session to ^0.9.1 ([#131](https://github.com/workos/authkit-tanstack-start/issues/131)) ([0e32c2d](https://github.com/workos/authkit-tanstack-start/commit/0e32c2da58700aeb3979ad1035e81b9ffc805d87))
+
 ## [0.12.0](https://github.com/workos/authkit-tanstack-start/compare/v0.11.1...v0.12.0) (2026-10-20)
 
 

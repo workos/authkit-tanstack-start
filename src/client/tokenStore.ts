@@ -13,6 +13,28 @@ const SHORT_TOKEN_EXPIRY_BUFFER_SECONDS = 30;
 const MIN_REFRESH_DELAY_SECONDS = 15;
 const MAX_REFRESH_DELAY_SECONDS = 24 * 60 * 60;
 const RETRY_DELAY_SECONDS = 300;
+const REFRESH_TIMEOUT_MS = 8_000;
+
+async function withRefreshTimeout(
+  action: (options: { signal: AbortSignal }) => Promise<string | undefined>,
+): Promise<string | undefined> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`Token refresh timed out after ${REFRESH_TIMEOUT_MS} ms`);
+      controller.abort(error);
+      reject(error);
+    }, REFRESH_TIMEOUT_MS);
+  });
+
+  try {
+    // Reject even if the action ignores cancellation, so callers can retry.
+    return await Promise.race([action({ signal: controller.signal }), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function getExpiryBuffer(totalTokenLifetime: number): number {
   return totalTokenLifetime <= SHORT_TOKEN_LIFETIME_SECONDS
@@ -198,7 +220,7 @@ export class TokenStore {
 
   private async fetchRefreshedToken(): Promise<string | undefined> {
     const requestedAt = Math.floor(Date.now() / 1000);
-    const token = await refreshAccessTokenAction();
+    const token = await withRefreshTimeout(refreshAccessTokenAction);
     this.unverifiedToken = undefined;
     const iat = this.parseToken(token)?.payload.iat;
 
@@ -234,7 +256,7 @@ export class TokenStore {
           token = await this.fetchRefreshedToken();
         } else {
           if (!previousToken) {
-            token = await getAccessTokenAction();
+            token = await withRefreshTimeout(getAccessTokenAction);
             const tokenData = this.parseToken(token);
 
             if (token && token !== previousToken) {

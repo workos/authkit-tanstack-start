@@ -322,6 +322,64 @@ describe('TokenStore', () => {
     });
   });
 
+  describe('request timeouts', () => {
+    it.each(['get', 'refresh'] as const)('bounds a hung %s action and allows a retry', async (action) => {
+      const mockAction = vi.mocked(action === 'get' ? getAccessTokenAction : refreshAccessTokenAction);
+      let signal: AbortSignal | undefined;
+      let resolveLate!: (token: string) => void;
+      mockAction.mockImplementationOnce((options) => {
+        signal = options?.signal;
+        // Deliberately ignore cancellation to exercise the timeout rejection itself.
+        return new Promise<string>((resolve) => {
+          resolveLate = resolve;
+        });
+      });
+      const request = () => (action === 'get' ? store.getAccessToken() : store.refreshToken());
+      const results = Promise.allSettled([request(), request(), request()]);
+
+      expect(mockAction).toHaveBeenCalledTimes(1);
+      expect(signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(7_999);
+      expect(store.isRefreshing()).toBe(true);
+      await vi.advanceTimersByTimeAsync(1);
+
+      for (const result of await results) {
+        expect(result.status).toBe('rejected');
+        if (result.status === 'rejected') {
+          expect(result.reason.message).toBe('Token refresh timed out after 8000 ms');
+        }
+      }
+      expect(signal?.aborted).toBe(true);
+      expect(store.isRefreshing()).toBe(false);
+      expect(store.getSnapshot().loading).toBe(false);
+      expect(store.getSnapshot().error?.message).toBe('Token refresh timed out after 8000 ms');
+
+      mockAction.mockResolvedValueOnce('new-token');
+      await expect(request()).resolves.toBe('new-token');
+      expect(mockAction).toHaveBeenCalledTimes(2);
+      resolveLate('stale-token');
+      await Promise.resolve();
+      expect(store.getSnapshot().token).toBe('new-token');
+      expect(store.getSnapshot().error).toBeNull();
+      store.reset();
+    });
+
+    it.each(['success', 'failure'] as const)('clears the deadline after %s', async (outcome) => {
+      let signal: AbortSignal | undefined;
+      vi.mocked(refreshAccessTokenAction).mockImplementationOnce(async (options) => {
+        signal = options?.signal;
+        if (outcome === 'failure') throw new Error('Network failure');
+        return 'token';
+      });
+      await store.refreshToken().catch(() => {});
+      // A failure schedules the existing retry timer; reset removes that timer.
+      store.reset();
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect(signal?.aborted).toBe(false);
+    });
+  });
+
   describe('refresh error handling', () => {
     it('converts non-Error to Error on failure', async () => {
       vi.mocked(refreshAccessTokenAction).mockRejectedValue('string error');

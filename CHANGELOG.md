@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.1](https://github.com/workos/authkit-tanstack-start/compare/v0.12.0...v0.12.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **client:** bound stalled token requests with a timeout ([#137](https://github.com/workos/authkit-tanstack-start/issues/137)) ([69b3e14](https://github.com/workos/authkit-tanstack-start/commit/69b3e14c83475a2cf532aa94ac88a238c7ab02a8))
+* **deps:** Bump @workos/authkit-session to ^0.9.1 ([#131](https://github.com/workos/authkit-tanstack-start/issues/131)) ([0e32c2d](https://github.com/workos/authkit-tanstack-start/commit/0e32c2da58700aeb3979ad1035e81b9ffc805d87))
+* **deps:** support @workos-inc/node 12 ([#132](https://github.com/workos/authkit-tanstack-start/issues/132)) ([a862de9](https://github.com/workos/authkit-tanstack-start/commit/a862de953db218fb4e389f9bd2bff76d5fc8ede2))
+
 ## [0.12.0](https://github.com/workos/authkit-tanstack-start/compare/v0.11.1...v0.12.0) (2026-10-20)
 
 

@@ -83,7 +83,7 @@ vi.mock('@tanstack/react-start', () => ({
     validator: (validator: Function) => ({
       handler: (handler: Function) => {
         const fn = async (opts?: { data?: any }) => {
-          const data = opts?.data !== undefined ? validator(opts.data) : undefined;
+          const data = validator(opts?.data);
           return handler({ data });
         };
         return fn;
@@ -117,6 +117,7 @@ vi.mock('@tanstack/react-start', () => ({
 import '@tanstack/react-start/server';
 import './authkit-loader';
 import * as serverFunctions from './server-functions';
+import { validateSwitchToOrganizationInput } from './switch-organization-input';
 
 describe('Server Functions', () => {
   beforeEach(() => {
@@ -552,6 +553,124 @@ describe('Server Functions', () => {
       expect(result.organizationId).toBe('org_456');
       expect(result.role).toBe('admin');
       expect(result.permissions).toEqual(['read', 'write']);
+    });
+
+    // Issue #139: scanners and bots POST no payload or a malformed one.
+    const INPUT_ERROR = new Error('switchToOrganization requires { organizationId: string, returnTo?: string }');
+    // Skips the compile-time input type so tests can send what a raw request can.
+    const switchWithRawInput = serverFunctions.switchToOrganization as unknown as (opts?: {
+      data?: unknown;
+    }) => Promise<unknown>;
+
+    const signIn = async () => {
+      mockAuthContext = () => ({
+        user: { id: 'user_123' },
+        sessionId: 'session_123',
+        accessToken: 'token',
+      });
+      const authHelpers = await import('./auth-helpers');
+      const refreshSpy = vi.spyOn(authHelpers, 'refreshSession').mockResolvedValue(null);
+      refreshSpy.mockClear();
+      return refreshSpy;
+    };
+
+    it('rejects a missing payload with the input error, not a TypeError, when there is no session', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      await expect(switchWithRawInput()).rejects.toStrictEqual(INPUT_ERROR);
+      await expect(switchWithRawInput({})).rejects.toStrictEqual(INPUT_ERROR);
+    });
+
+    it('rejects a missing payload without calling refreshSession when signed in', async () => {
+      const refreshSpy = await signIn();
+
+      await expect(switchWithRawInput()).rejects.toStrictEqual(INPUT_ERROR);
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['null', null],
+      ['an array', [{ organizationId: 'org_123' }]],
+      ['a string', 'org_123'],
+    ])('rejects %s payload', async (_label, data) => {
+      const refreshSpy = await signIn();
+
+      await expect(switchWithRawInput({ data })).rejects.toStrictEqual(INPUT_ERROR);
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['missing', {}],
+      ['not a string', { organizationId: 123 }],
+      ['an empty string', { organizationId: '' }],
+    ])('rejects when organizationId is %s, without calling refreshSession', async (_label, data) => {
+      const refreshSpy = await signIn();
+
+      await expect(switchWithRawInput({ data })).rejects.toStrictEqual(INPUT_ERROR);
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-string returnTo', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      await expect(switchWithRawInput({ data: { organizationId: 'org_123', returnTo: 42 } })).rejects.toStrictEqual(
+        INPUT_ERROR,
+      );
+    });
+
+    it('treats an explicitly undefined returnTo as absent', async () => {
+      mockAuthContext = () => ({ user: null });
+
+      try {
+        await serverFunctions.switchToOrganization({ data: { organizationId: 'org_123', returnTo: undefined } });
+        expect.fail('Should have thrown redirect');
+      } catch (error: any) {
+        expect(error.message).toBe('REDIRECT');
+        expect(error.options.to).toBe('/');
+      }
+    });
+  });
+
+  describe('switchToOrganization input check (validateSwitchToOrganizationInput)', () => {
+    const withReturnTo = { fnName: 'switchToOrganization', withReturnTo: true };
+    const withoutReturnTo = { fnName: 'switchToOrganizationAction', withReturnTo: false };
+
+    it('returns valid input unchanged', () => {
+      const minimal = { organizationId: 'org_123' };
+      const full = { organizationId: 'org_123', returnTo: '/dashboard' };
+
+      expect(validateSwitchToOrganizationInput(minimal, withReturnTo)).toBe(minimal);
+      expect(validateSwitchToOrganizationInput(full, withReturnTo)).toBe(full);
+      expect(validateSwitchToOrganizationInput(minimal, withoutReturnTo)).toBe(minimal);
+    });
+
+    it.each([
+      ['undefined', undefined],
+      ['null', null],
+      ['an array', []],
+      ['a string', 'org_123'],
+      ['a number', 42],
+      ['an object without organizationId', {}],
+      ['a non-string organizationId', { organizationId: 123 }],
+      ['an empty organizationId', { organizationId: '' }],
+      ['a non-string returnTo', { organizationId: 'org_123', returnTo: 42 }],
+      ['a null returnTo', { organizationId: 'org_123', returnTo: null }],
+    ])('rejects %s, naming the function and the expected shape', (_label, input) => {
+      expect(() => validateSwitchToOrganizationInput(input, withReturnTo)).toThrow(
+        new Error('switchToOrganization requires { organizationId: string, returnTo?: string }'),
+      );
+    });
+
+    it('uses the shape without returnTo when withReturnTo is false', () => {
+      expect(() => validateSwitchToOrganizationInput(undefined, withoutReturnTo)).toThrow(
+        new Error('switchToOrganizationAction requires { organizationId: string }'),
+      );
+    });
+
+    it('does not check returnTo when withReturnTo is false', () => {
+      const input = { organizationId: 'org_123', returnTo: 42 };
+
+      expect(validateSwitchToOrganizationInput(input, withoutReturnTo)).toBe(input);
     });
   });
 

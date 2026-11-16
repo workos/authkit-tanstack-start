@@ -55,7 +55,7 @@ vi.mock('@tanstack/react-start', () => ({
     validator: (validator: Function) => ({
       handler: (handler: Function) => {
         return async (opts?: { data?: any }) => {
-          const data = opts?.data !== undefined ? validator(opts.data) : undefined;
+          const data = validator(opts?.data);
           return handler({ data });
         };
       },
@@ -291,6 +291,28 @@ describe('Actions', () => {
       const result = await switchToOrganizationAction({ data: { organizationId: 'bad_org' } });
 
       expect(result).toEqual({ user: null });
+    });
+
+    // Issue #139: scanners and bots POST no payload or a malformed one.
+    const INPUT_ERROR = new Error('switchToOrganizationAction requires { organizationId: string }');
+    // Skips the compile-time input type so tests can send what a raw request can.
+    const switchWithRawInput = switchToOrganizationAction as unknown as (opts?: { data?: unknown }) => Promise<unknown>;
+
+    it.each([
+      ['no payload', undefined],
+      ['a null payload', { data: null }],
+      ['a missing organizationId', { data: {} }],
+      ['a non-string organizationId', { data: { organizationId: 123 } }],
+      ['an empty organizationId', { data: { organizationId: '' } }],
+    ])('rejects %s with the input error without calling refreshSession', async (_label, opts) => {
+      mockAuthContext = {
+        auth: () => ({ user: { id: 'user_123' } }),
+        request: new Request('http://test.local'),
+      };
+      vi.mocked(refreshSession).mockResolvedValue(null);
+
+      await expect(switchWithRawInput(opts)).rejects.toStrictEqual(INPUT_ERROR);
+      expect(refreshSession).not.toHaveBeenCalled();
     });
   });
 

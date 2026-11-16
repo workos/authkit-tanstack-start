@@ -1,6 +1,7 @@
 import { redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import type { Impersonator, User } from '../types.js';
+import { validateSwitchToOrganizationInput } from './switch-organization-input.js';
 
 // Type-only import - safe for bundling
 import type { GetAuthorizationUrlOptions as GetAuthURLOptions } from '@workos/authkit-session';
@@ -220,7 +221,9 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
  * ```
  */
 export const switchToOrganization = createServerFn({ method: 'POST' })
-  .validator((data: { organizationId: string; returnTo?: string }) => data)
+  .validator((data: { organizationId: string; returnTo?: string }) =>
+    validateSwitchToOrganizationInput(data, { fnName: 'switchToOrganization', withReturnTo: true }),
+  )
   .handler(async ({ data }): Promise<UserInfo> => {
     const { switchToOrganizationBody } = await import('./server-fn-bodies.js');
     const plan = await switchToOrganizationBody(data);

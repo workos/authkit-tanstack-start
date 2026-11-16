@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import type { ClientUserInfo, NoUserInfo, UserInfo } from './server-functions.js';
 import type { OrganizationInfo } from './action-bodies.js';
+import { validateSwitchToOrganizationInput } from './switch-organization-input.js';
 
 export type { OrganizationInfo };
 
@@ -55,7 +56,9 @@ export const refreshAccessTokenAction = createServerFn({ method: 'POST' }).handl
  * Switch to a different organization. Sanitized for client use (no access token).
  */
 export const switchToOrganizationAction = createServerFn({ method: 'POST' })
-  .validator((data: { organizationId: string }) => data)
+  .validator((data: { organizationId: string }) =>
+    validateSwitchToOrganizationInput(data, { fnName: 'switchToOrganizationAction', withReturnTo: false }),
+  )
   .handler(async ({ data }): Promise<Omit<UserInfo, 'accessToken'> | NoUserInfo> => {
     const { switchToOrganizationBody } = await import('./action-bodies.js');
     return switchToOrganizationBody(data);

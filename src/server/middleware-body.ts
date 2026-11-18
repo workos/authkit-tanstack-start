@@ -15,6 +15,14 @@ export async function middlewareBody(args: any, options?: AuthKitMiddlewareOptio
   const { auth, refreshedSessionData } = await authkit.withAuth(args.request);
   const pendingHeaders = new Headers();
 
+  // Queue auto-refresh cookies first so downstream session writes take precedence.
+  if (refreshedSessionData) {
+    const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
+    for (const cookie of sessionResponse?.headers.getSetCookie() ?? []) {
+      pendingHeaders.append('Set-Cookie', cookie);
+    }
+  }
+
   const result = await args.next({
     context: {
       auth: () => auth,
@@ -29,13 +37,6 @@ export async function middlewareBody(args: any, options?: AuthKitMiddlewareOptio
       },
     },
   });
-
-  if (refreshedSessionData) {
-    const { response: sessionResponse } = await authkit.saveSession(undefined, refreshedSessionData);
-    for (const cookie of sessionResponse?.headers.getSetCookie() ?? []) {
-      pendingHeaders.append('Set-Cookie', cookie);
-    }
-  }
 
   const headerEntries = [...pendingHeaders];
   if (headerEntries.length === 0) {
